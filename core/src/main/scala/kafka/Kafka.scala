@@ -26,6 +26,9 @@ import org.apache.kafka.common.utils.Utils
 
 import scala.collection.JavaConverters._
 
+/**
+  * config/server.properties --override num.partitions=3  --override replication-factor=1 --override log.segment.bytes=256
+  */
 object Kafka extends Logging {
 
   def getPropsFromArgs(args: Array[String]): Properties = {

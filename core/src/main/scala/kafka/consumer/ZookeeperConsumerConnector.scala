@@ -92,10 +92,13 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
 
   private val isShuttingDown = new AtomicBoolean(false)
   private val rebalanceLock = new Object
+  //消息拉取管理器
   private var fetcher: Option[ConsumerFetcherManager] = None
   private var zkUtils: ZkUtils = null
+  //主题，分区号，分区信息
   private var topicRegistry = new Pool[String, Pool[Int, PartitionTopicInfo]]
   private val checkpointedZkOffsets = new Pool[TopicAndPartition, Long]
+  // 消费者订阅的主题和线程数
   private val topicThreadIdAndQueues = new Pool[(String, ConsumerThreadId), BlockingQueue[FetchedDataChunk]]
   private val scheduler = new KafkaScheduler(threads = 1, threadNamePrefix = "kafka-consumer-scheduler-")
   private val messageStreamCreated = new AtomicBoolean(false)
@@ -103,7 +106,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
   private var sessionExpirationListener: ZKSessionExpireListener = null
   private var topicPartitionChangeListener: ZKTopicPartitionChangeListener = null
   private var loadBalancerListener: ZKRebalancerListener = null
-
+  //偏移量存储为Kafka内部主题时(__consumer_offsets-n)，需要和管理消费组的协调者通信。
   private var offsetsChannel: BlockingChannel = null
   private val offsetsChannelLock = new Object
 
