@@ -131,9 +131,9 @@ class RangeAssignor() extends PartitionAssignor with Logging {
   /**
     * 分配算法，例如有2个线程，5个分区：
     * 1. 平均给每个线程先分配nPartsPerConsumer=2(5/2)个分区
-    * 2. 现在还剩下nConsumersWithExtraPart=1(5%2)个分区,这个分区分给谁呢？按顺序分配给consumerThreadId所在索引加1大于余数的消费线程
+    * 2. 现在还剩下nConsumersWithExtraPart=1(5%2)个分区,这个分区分给谁呢？按顺序分配给consumerThreadId所在索引加1小于余数的消费线程
     * 3. 最终分配结果：
-    *  ① startPart=0，nParts=2
+    *  ① startPart=0，nParts=3
     *  ② startPart=3，nParts=2
     */
   def assign(ctx: AssignmentContext) = {
