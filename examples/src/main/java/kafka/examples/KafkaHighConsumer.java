@@ -5,6 +5,7 @@ import kafka.consumer.ConsumerConfig;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
 import kafka.javaapi.consumer.ConsumerConnector;
+import kafka.message.MessageAndMetadata;
 
 import java.util.HashMap;
 import java.util.List;
@@ -39,6 +40,8 @@ public class KafkaHighConsumer {
         Map<String, Integer> topicCountMap = new HashMap<String, Integer>();
         //设计topic和stream的关系，即K为topic，V为stream的个数N
         topicCountMap.put(topic, new Integer(numThreads));
+        topicCountMap.put("topic2", 2);
+        topicCountMap.put("topic3",1);
         //获取numThreads个stream
         Map<String, List<KafkaStream<byte[], byte[]>>> consumerMap = consumer
                 .createMessageStreams(topicCountMap);
@@ -63,7 +66,7 @@ public class KafkaHighConsumer {
     }
 
     public static void main(String[] arg) {
-        String[] args = {"localhost:2181", "topic01-group-1", "topic01", "3"};
+        String[] args = {"localhost:2181", "topic-group", KafkaProperties.TOPIC, "4"};
         String zooKeeper = args[0];
         String groupId = args[1];
         String topic = args[2];
@@ -88,9 +91,10 @@ public class KafkaHighConsumer {
 
         public void run() {// KafkaStream的本质就是一个网络迭代器
             ConsumerIterator<byte[], byte[]> it = m_stream.iterator();
-            while (it.hasNext())
-                System.out.println("Thread " + m_threadNumber + ": "
-                        + new String(it.next().message()));
+            while (it.hasNext()){
+                MessageAndMetadata<byte[], byte[]> mata = it.next();
+                System.out.println(String.format("[Topic=%s,Partition=%s,Offset=%s,Thread=%s] ",mata.topic(),mata.partition(),mata.offset(),m_threadNumber)+ new String(mata.message()));
+            }
             System.out.println("Shutting down Thread: " + m_threadNumber);
         }
     }

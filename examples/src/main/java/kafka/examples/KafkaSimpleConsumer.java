@@ -30,14 +30,14 @@ public class KafkaSimpleConsumer {
         // 最大读取消息数量  
         long maxReads = Long.parseLong("3");
         // 要订阅的topic  
-        String topic = "topic01";
+        String topic = KafkaProperties.TOPIC;
         // 要查找的分区  
         int partition = Integer.parseInt("0");
         // broker节点的ip  
         List<String> seeds = new ArrayList<String>();
         seeds.add("localhost");
         // 端口
-        int port = Integer.parseInt("9092");
+        int port = KafkaProperties.KAFKA_SERVER_PORT;
         try {
             example.run(maxReads, topic, partition, seeds, port);
         } catch (Exception e) {

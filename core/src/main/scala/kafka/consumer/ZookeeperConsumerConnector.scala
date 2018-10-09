@@ -267,6 +267,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
 
     val dirs = new ZKGroupDirs(config.groupId)
     registerConsumerInZK(dirs, consumerIdString, topicCount)
+    //执行重新初始化
     reinitializeConsumer(topicCount, queuesAndStreams)
 
     loadBalancerListener.kafkaMessageAndMetadataStreams.asInstanceOf[Map[String, List[KafkaStream[K,V]]]]
@@ -685,6 +686,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
         // We log a warning and register for child changes on brokers/id so that rebalance can be triggered when the brokers
         // are up.
         warn("no brokers found when trying to rebalance.")
+
         zkUtils.zkClient.subscribeChildChanges(BrokerIdsPath, loadBalancerListener)
         true
       }
@@ -893,6 +895,13 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
   }
 
+  /**
+    *
+    * 外部事件会通过下面3种监昕器和线程检查的方式触发再平衡:
+    * 口 ZKSessionExpireListner。 当新的会话建立或者会话超时需要重新注册消费者，并调用syncedRebalance()触发再平衡。
+    * 口 ZKTopicPartionChangeListner 。当主题的分区数量变化时，通过rebalanceEventT触发再平衡。
+    * 口 ZKRebalancerListner。当消费组成员变化时， 通过rebalanceEventTh发再平衡。
+    */
   private def reinitializeConsumer[K,V](
       topicCount: TopicCount,
       queuesAndStreams: List[(LinkedBlockingQueue[FetchedDataChunk],KafkaStream[K,V])]) {
@@ -968,15 +977,18 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     // listener to consumer and partition changes
     zkUtils.zkClient.subscribeStateChanges(sessionExpirationListener)
 
+    //监听/consumers/[group]/ids路径的变化，此路径下存放Consumer和Topic关系：[cosumer id]->Topic1..N的变化
     zkUtils.zkClient.subscribeChildChanges(dirs.consumerRegistryDir, loadBalancerListener)
 
     topicStreamsMap.foreach { topicAndStreams =>
       // register on broker partition path changes
       val topicPath = BrokerTopicsPath + "/" + topicAndStreams._1
+      //监听/brokers/topics路径的变化，此路径存放Topic信息，回调时最终调用loadBalancerListener.rebalanceEventTriggered()方法
       zkUtils.zkClient.subscribeDataChanges(topicPath, topicPartitionChangeListener)
     }
 
     // explicitly trigger load balancing for this consumer
+    // 显式触发负载平衡
     loadBalancerListener.syncedRebalance()
   }
 

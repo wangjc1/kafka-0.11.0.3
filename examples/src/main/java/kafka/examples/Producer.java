@@ -60,7 +60,13 @@ public class Producer extends Thread {
                 }
             }
             ++messageNo;
+            if(messageNo>1000) break;
         }
+    }
+
+    public static void main(String[] args) {
+        Producer producerThread = new Producer(KafkaProperties.TOPIC, false);
+        producerThread.start();
     }
 }
 

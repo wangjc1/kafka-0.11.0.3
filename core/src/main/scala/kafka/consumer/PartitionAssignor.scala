@@ -128,25 +128,41 @@ class RoundRobinAssignor() extends PartitionAssignor with Logging {
             "Please use org.apache.kafka.clients.consumer.RangeAssignor instead.", "0.11.0.0")
 class RangeAssignor() extends PartitionAssignor with Logging {
 
+  /**
+    * 分配算法，例如有2个线程，5个分区：
+    * 1. 平均给每个线程先分配nPartsPerConsumer=2(5/2)个分区
+    * 2. 现在还剩下nConsumersWithExtraPart=1(5%2)个分区,这个分区分给谁呢？按顺序分配给consumerThreadId所在索引加1大于余数的消费线程
+    * 3. 最终分配结果：
+    *  ① startPart=0，nParts=2
+    *  ② startPart=3，nParts=2
+    */
   def assign(ctx: AssignmentContext) = {
     val valueFactory = (_: String) => new mutable.HashMap[TopicAndPartition, ConsumerThreadId]
     val partitionAssignment =
       new Pool[String, mutable.Map[TopicAndPartition, ConsumerThreadId]](Some(valueFactory))
+    //遍历Topic-Thread集合
     for (topic <- ctx.myTopicThreadIds.keySet) {
+      //获取topic主题对应的消费线程集合，这个是在消费客户配置的，配置几个线程，这里就生成几个消费线程
       val curConsumers = ctx.consumersForTopic(topic)
+      //获取topic主题存放的分区集合
       val curPartitions: Seq[Int] = ctx.partitionsForTopic(topic)
 
+      //取倍数：nPartsPerConsumer = 分区数/消费线程数
       val nPartsPerConsumer = curPartitions.size / curConsumers.size
+      //取余数： nConsumersWithExtraPart = 分区数%消费线程数
       val nConsumersWithExtraPart = curPartitions.size % curConsumers.size
 
       info("Consumer " + ctx.consumerId + " rebalancing the following partitions: " + curPartitions +
         " for topic " + topic + " with consumers: " + curConsumers)
 
       for (consumerThreadId <- curConsumers) {
+        //获取消费线程ID为consumerThreadId所在集合的索引位置
         val myConsumerPosition = curConsumers.indexOf(consumerThreadId)
         assert(myConsumerPosition >= 0)
+
         val startPart = nPartsPerConsumer * myConsumerPosition + myConsumerPosition.min(nConsumersWithExtraPart)
         val nParts = nPartsPerConsumer + (if (myConsumerPosition + 1 > nConsumersWithExtraPart) 0 else 1)
+        info(s"startPart=$startPart,nParts=$nParts")
 
         /**
          *   Range-partition the sorted partitions to consumers for better locality.
@@ -161,6 +177,7 @@ class RangeAssignor() extends PartitionAssignor with Logging {
             // record the partition ownership decision
             val assignmentForConsumer = partitionAssignment.getAndMaybePut(consumerThreadId.consumer)
             assignmentForConsumer += (TopicAndPartition(topic, partition) -> consumerThreadId)
+            info(s"[topic=$topic,partition=$partition] => $consumerThreadId")
           }
         }
       }
