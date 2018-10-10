@@ -27,7 +27,7 @@ import org.apache.kafka.common.utils.Utils
 import scala.collection.JavaConverters._
 
 /**
-  * config/server.properties --override num.partitions=3  --override replication-factor=1 --override log.segment.bytes=10240
+  * config/server.properties --override num.partitions=3  --override replication-factor=1 --override log.segment.bytes=10240 --override zookeeper.session.timeout.ms=60000 --override zookeeper.connection.timeout.ms=60000
   */
 object Kafka extends Logging {
 

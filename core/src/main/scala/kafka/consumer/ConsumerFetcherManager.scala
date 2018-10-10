@@ -55,6 +55,7 @@ class ConsumerFetcherManager(private val consumerIdString: String,
   private class LeaderFinderThread(name: String) extends ShutdownableThread(name) {
     // thread responsible for adding the fetcher to the right broker when leader is available
     override def doWork() {
+      // 获取分区的主副本及其存放的Broker地址
       val leaderForPartitionsMap = new HashMap[TopicPartition, BrokerEndPoint]
       lock.lock()
       try {

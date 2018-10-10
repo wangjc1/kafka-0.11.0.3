@@ -148,6 +148,7 @@ abstract class AbstractFetcherThread(name: String,
 
     try {
       trace(s"Issuing fetch to broker ${sourceBroker.id}, request: $fetchRequest")
+      // 从Broker上拉取消息
       responseData = fetch(fetchRequest)
     } catch {
       case t: Throwable =>

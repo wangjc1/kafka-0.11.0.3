@@ -19,12 +19,12 @@ import java.util.concurrent.Executors;
  * @author Wang
  */
 @Deprecated //since 0.11.0.0. This class will be removed in a future release.
-public class KafkaHighConsumer {
+public class KafkaHighConsumer2 {
     private final ConsumerConnector consumer;
     private final String topic;
     private ExecutorService executor;
 
-    public KafkaHighConsumer(String a_zookeeper, String a_groupId, String a_topic) {
+    public KafkaHighConsumer2(String a_zookeeper, String a_groupId, String a_topic) {
         consumer = Consumer.createJavaConsumerConnector(createConsumerConfig(a_zookeeper, a_groupId));
         this.topic = a_topic;
     }
@@ -35,7 +35,7 @@ public class KafkaHighConsumer {
         String groupId = args[1];
         String topic = args[2];
         int threads = Integer.parseInt(args[3]);
-        KafkaHighConsumer demo = new KafkaHighConsumer(zooKeeper, groupId, topic);
+        KafkaHighConsumer2 demo = new KafkaHighConsumer2(zooKeeper, groupId, topic);
         demo.run(threads);
 
         try {
@@ -75,7 +75,6 @@ public class KafkaHighConsumer {
         Properties props = new Properties();
         props.put("zookeeper.connect", a_zookeeper);
         props.put("group.id", a_groupId);
-        props.put("zookeeper.connection.timeout.ms", "3000");
         props.put("zookeeper.session.timeout.ms", "60000");
         props.put("zookeeper.sync.time.ms", "200");
         props.put("auto.commit.interval.ms", "1000");

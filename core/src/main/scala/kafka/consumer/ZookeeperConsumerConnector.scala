@@ -251,8 +251,10 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     if (topicCountMap == null)
       throw new RuntimeException("topicCountMap is null")
 
+    //当前Consumer消费的Topic数量
     val topicCount = TopicCount.constructTopicCount(consumerIdString, topicCountMap)
 
+    //当前Consumer客户端分配给其所消费的所有Topic可用的线程总数，如果线程总数大于所有Topic的总分区数，可能有部分的线程消费不到
     val topicThreadIds = topicCount.getConsumerThreadIdsPerTopic
 
     // make a list of (queue,stream) pairs, one pair for each threadId
@@ -266,6 +268,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     ).flatten.toList
 
     val dirs = new ZKGroupDirs(config.groupId)
+    //注册Cosumer客户端到Zk的/consumers/[group]/ids下
     registerConsumerInZK(dirs, consumerIdString, topicCount)
     //执行重新初始化
     reinitializeConsumer(topicCount, queuesAndStreams)
@@ -678,6 +681,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
 
     private def rebalance(cluster: Cluster): Boolean = {
+      //当前Consumer客户端对应的线程集合
       val myTopicThreadIdsMap = TopicCount.constructTopicCount(
         group, consumerIdString, zkUtils, config.excludeInternalTopics).getConsumerThreadIdsPerTopic
       val brokers = zkUtils.getAllBrokersInCluster()
@@ -710,15 +714,23 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
           )
         }
         releasePartitionOwnership(topicRegistry)
+
+        //从ZK中获取Consumer、Topic、Partition，重新构建Topic和所有消费线程之间的关系
         val assignmentContext = new AssignmentContext(group, consumerIdString, config.excludeInternalTopics, zkUtils)
+
+        //给Cosumer 线程从新分配Partition
         val globalPartitionAssignment = partitionAssignor.assign(assignmentContext)
+
+        //获取当前Cousumer客户端新分配的Partition
         val partitionAssignment = globalPartitionAssignment.get(assignmentContext.consumerId)
         val currentTopicRegistry = new Pool[String, Pool[Int, PartitionTopicInfo]](
           valueFactory = Some((_: String) => new Pool[Int, PartitionTopicInfo]))
 
         // fetch current offsets for all topic-partitions
+        // 获取当前Cosumer客户端分配的分区
         val topicPartitions = partitionAssignment.keySet.toSeq
 
+        // 从ZK中获取对应分区的offset
         val offsetFetchResponseOpt = fetchOffsets(topicPartitions)
 
         if (isShuttingDown.get || !offsetFetchResponseOpt.isDefined)
@@ -896,7 +908,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
   }
 
   /**
-    *
+    * 这个方法主要是用来初始化注册事件，当监听的路径发生变化时，做重平衡操作。
     * 外部事件会通过下面3种监昕器和线程检查的方式触发再平衡:
     * 口 ZKSessionExpireListner。 当新的会话建立或者会话超时需要重新注册消费者，并调用syncedRebalance()触发再平衡。
     * 口 ZKTopicPartionChangeListner 。当主题的分区数量变化时，通过rebalanceEventT触发再平衡。
@@ -988,7 +1000,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
 
     // explicitly trigger load balancing for this consumer
-    // 显式触发负载平衡
+    // 加入第一次启动还没有监听consumer或topic路径，这时初始化完后需要手动调用一次触发重平衡
     loadBalancerListener.syncedRebalance()
   }
 

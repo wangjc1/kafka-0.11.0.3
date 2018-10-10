@@ -47,15 +47,19 @@ object PartitionAssignor {
 
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
 class AssignmentContext(group: String, val consumerId: String, excludeInternalTopics: Boolean, zkUtils: ZkUtils) {
+  //当前Consumer客户端，Topic对应的线程数
   val myTopicThreadIds: collection.Map[String, collection.Set[ConsumerThreadId]] = {
     val myTopicCount = TopicCount.constructTopicCount(group, consumerId, zkUtils, excludeInternalTopics)
     myTopicCount.getConsumerThreadIdsPerTopic
   }
 
+  // 比如有两个主题T1、T2,有两个消费端C1、C2(属于同一个组)
+  // 每个消费端有两个线程,这样就一组合每个Topic就有4个消费线程(同一个消费线程可以消费不同的Topic)
   val consumersForTopic: collection.Map[String, List[ConsumerThreadId]] =
     zkUtils.getConsumersPerTopic(group, excludeInternalTopics)
 
   // Some assignment strategies require knowledge of all topics consumed by any member of the group
+  // 获取当前消费Topic对应的分区，T1=>(0,1,2) 主题T1有3个分区
   val partitionsForTopic: collection.Map[String, Seq[Int]] =
     zkUtils.getPartitionsForTopics(consumersForTopic.keySet.toSeq)
 
@@ -142,7 +146,7 @@ class RangeAssignor() extends PartitionAssignor with Logging {
       new Pool[String, mutable.Map[TopicAndPartition, ConsumerThreadId]](Some(valueFactory))
     //遍历Topic-Thread集合
     for (topic <- ctx.myTopicThreadIds.keySet) {
-      //获取topic主题对应的消费线程集合，这个是在消费客户配置的，配置几个线程，这里就生成几个消费线程
+      //获取topic主题对应的所有消费线程集合，这个是在消费客户配置的，配置几个线程，这里就生成几个消费线程
       val curConsumers = ctx.consumersForTopic(topic)
       //获取topic主题存放的分区集合
       val curPartitions: Seq[Int] = ctx.partitionsForTopic(topic)

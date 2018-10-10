@@ -60,6 +60,7 @@ private[kafka] object TopicCount extends Logging {
 
   def constructTopicCount(group: String, consumerId: String, zkUtils: ZkUtils, excludeInternalTopics: Boolean) : TopicCount = {
     val dirs = new ZKGroupDirs(group)
+    //从zk的/consumers/[group]/ids/consumerId路径下读取为Topic配置的线程数
     val topicCountString = zkUtils.readData(dirs.consumerRegistryDir + "/" + consumerId)._1
     var subscriptionPattern: String = null
     var topMap: Map[String, Int] = null
