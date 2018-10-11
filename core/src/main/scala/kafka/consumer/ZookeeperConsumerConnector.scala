@@ -143,6 +143,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
   this.logIdent = "[" + consumerIdString + "], "
 
   connectZk()
+  //创建消息拉取器ConsumerFetcherManager
   createFetcher()
   ensureOffsetManagerConnected()
 
@@ -784,6 +785,10 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
                 partitionAssigmentMapForCallback.asJava
               )
             }
+            //这个方法用于从broker上拉取消息：
+            // 1.先创建一个LeaderFinderThread线程，用于获取所有分区的主副本及其存放的broker地址
+            // 2.创建一个ConsumerFetcherThread线程用于拉取消息
+            // 3.将拉取的消息填充到队列中
             updateFetcher(cluster)
             true
           } else {
