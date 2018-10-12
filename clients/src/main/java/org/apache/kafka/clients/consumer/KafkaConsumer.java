@@ -857,6 +857,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     @Override
     public void subscribe(Collection<String> topics, ConsumerRebalanceListener listener) {
+        //确保获取到了当前线程
         acquire();
         try {
             if (topics == null) {

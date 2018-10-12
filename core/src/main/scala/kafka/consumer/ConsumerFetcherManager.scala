@@ -37,6 +37,12 @@ import java.util.concurrent.atomic.AtomicInteger
  *  Usage:
  *  Once ConsumerFetcherManager is created, startConnections() and stopAllConnections() can be called repeatedly
  *  until shutdown() is called.
+  *
+  * 为了减少客户端的网络连接数量，连接到同一个目标节点的多个分区可以合并起来一起处理。
+  * 就像生产者对消息按照分区的主副本分组后，相同主副本的多个分区只以一个请求的方式，
+  * 通过一个网络连接发送到一个目标节点，不需要为每个分区都建立一个连接
+  * 构建发送抓取请求所需的Broker列表和Topic分区列表是在LeaderFinderThread
+  * 线程的addFetcherForPartitions方法中在构建ConsumerFetcherThread类时传入的
  */
 @deprecated("This class has been deprecated and will be removed in a future release.", "0.11.0.0")
 class ConsumerFetcherManager(private val consumerIdString: String,

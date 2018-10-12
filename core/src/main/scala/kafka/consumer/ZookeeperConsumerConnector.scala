@@ -95,10 +95,15 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
   //消息拉取管理器
   private var fetcher: Option[ConsumerFetcherManager] = None
   private var zkUtils: ZkUtils = null
-  //主题，分区号，分区信息
+  //主题，分区号，分区信息，这是一个很重要的变量，他连接着Consumer客户端和消费线程
+  //每次Rebalance后，当前客户端被分配拉取某些Partition的某些Topic的任务列表
+  //然后把任务列表注册到topicRegistry中，拉取线程ConsumerFetcherThread会根据任务列表中的
+  //指定的信息拉取消息并将消息存放到Queue中
   private var topicRegistry = new Pool[String, Pool[Int, PartitionTopicInfo]]
+  //保存topic分区对应的位移，类似一个位移缓存器
   private val checkpointedZkOffsets = new Pool[TopicAndPartition, Long]
-  // 消费者订阅的主题和线程数
+  // 消费者订阅的主题和线程队列，主要用于在Consumer客户端和拉取线程之间共享Kafka队列
+  // 填充currentTopicRegistry信息时，必须从topicThreadIdAndQueues获取分配的那个队列
   private val topicThreadIdAndQueues = new Pool[(String, ConsumerThreadId), BlockingQueue[FetchedDataChunk]]
   private val scheduler = new KafkaScheduler(threads = 1, threadNamePrefix = "kafka-consumer-scheduler-")
   private val messageStreamCreated = new AtomicBoolean(false)
@@ -274,6 +279,8 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     //执行重新初始化
     reinitializeConsumer(topicCount, queuesAndStreams)
 
+    // 刚开始看kafkaMessageAndMetadataStreams变量，没有看到初始化的地方，最后发现是他赋值给topicStreamsMap变量
+    // topicStreamsMap这个变量初始化了里面的队列，而在这个队列是存放在topicThreadIdAndQueues中，用于全局共享，真是一团乱麻
     loadBalancerListener.kafkaMessageAndMetadataStreams.asInstanceOf[Map[String, List[KafkaStream[K,V]]]]
   }
 
@@ -724,6 +731,8 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
 
         //获取当前Cousumer客户端新分配的Partition
         val partitionAssignment = globalPartitionAssignment.get(assignmentContext.consumerId)
+
+        //当前Consumer客户端所消费的Topic注册器
         val currentTopicRegistry = new Pool[String, Pool[Int, PartitionTopicInfo]](
           valueFactory = Some((_: String) => new Pool[Int, PartitionTopicInfo]))
 
@@ -742,6 +751,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
             val (topic, partition) = topicAndPartition.asTuple
             val offset = offsetFetchResponse.requestInfo(topicAndPartition).offset
             val threadId = partitionAssignment(topicAndPartition)
+            //把当前Consumer客户端所消费的某些Partition上的Topic注册到currentTopicRegistry中
             addPartitionTopicInfo(currentTopicRegistry, partition, topic, offset, threadId)
           })
 
@@ -761,6 +771,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
                 ownedPartitionsCountMetricTags(topic))
             }
 
+            //赋值给全局主题注册器
             topicRegistry = currentTopicRegistry
             // Invoke beforeStartingFetchers callback if the consumerRebalanceListener is set.
             if (consumerRebalanceListener != null) {

@@ -102,6 +102,7 @@ abstract class AbstractFetcherThread(name: String,
     maybeTruncate()
     val fetchRequest = inLock(partitionMapLock) {
       val fetchRequest = buildFetchRequest(states)
+      // 如果拉取请求列表为空，等待fetchBackOffMs毫米
       if (fetchRequest.isEmpty) {
         trace("There are no active partitions. Back off for %d ms before sending a fetch request".format(fetchBackOffMs))
         partitionMapCond.await(fetchBackOffMs, TimeUnit.MILLISECONDS)
@@ -148,7 +149,7 @@ abstract class AbstractFetcherThread(name: String,
 
     try {
       trace(s"Issuing fetch to broker ${sourceBroker.id}, request: $fetchRequest")
-      // 从Broker上拉取消息
+      // 请求Broker拉取消息
       responseData = fetch(fetchRequest)
     } catch {
       case t: Throwable =>

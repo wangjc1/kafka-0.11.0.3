@@ -18,15 +18,15 @@ import java.util.*;
  * @author Wang
  */
 @Deprecated //since 0.11.0.0. This class will be removed in a future release.
-public class KafkaSimpleConsumer {
+public class KafkaLowConsumer {
     private List<String> m_replicaBrokers = new ArrayList<String>();
 
-    public KafkaSimpleConsumer() {
+    public KafkaLowConsumer() {
         m_replicaBrokers = new ArrayList<String>();
     }
 
     public static void main(String args[]) {
-        KafkaSimpleConsumer example = new KafkaSimpleConsumer();
+        KafkaLowConsumer example = new KafkaLowConsumer();
         // 最大读取消息数量  
         long maxReads = Long.parseLong("3");
         // 要订阅的topic  

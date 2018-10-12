@@ -46,6 +46,14 @@ import scala.math.max
  * lock. ReplicaManager.appendRecords may be invoked while holding the group lock
  * used by its callback.  The delayed callback may acquire the group lock
  * since the delayed operation is completed only if the group lock can be acquired.
+
+  如何确定consumer group的coordinator
+  consumer group如何确定自己的coordinator是谁呢？ 简单来说分为两步：
+  1. 确定consumer group位移信息写入__consumers_offsets这个topic的哪个分区。具体计算公式：
+  __consumers_offsets partition# = Math.abs(groupId.hashCode() % groupMetadataTopicPartitionCount) 注意：groupMetadataTopicPartitionCount由offsets.topic.num.partitions指定，默认是50个分区。
+  2. 该分区leader所在的broker就是被选定的coordinator
+
+  ConsumerCoordinator作为协调器的客户端请求GroupCoordinator
  */
 class GroupCoordinator(val brokerId: Int,
                        val groupConfig: GroupConfig,
