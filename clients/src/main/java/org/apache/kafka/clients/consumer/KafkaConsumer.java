@@ -1049,7 +1049,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     //
                     // NOTE: since the consumed position has already been updated, we must not allow
                     // wakeups or any other errors to be triggered prior to returning the fetched records.
+                    // 在前一次抓取到记录后，不立即返回，先看下是否还有未发送的抓取请求，有的话立即发送出去
                     if (fetcher.sendFetches() > 0 || client.hasPendingRequests())
+                        //异步发送，不影响第一次发送的返回速度
                         client.pollNoWakeup();
 
                     if (this.interceptors == null)
@@ -1058,7 +1060,9 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                         return this.interceptors.onConsume(new ConsumerRecords<>(records));
                 }
 
+                //从开始到现在所花费的时间
                 long elapsed = time.milliseconds() - start;
+                //剩余的时间，小于等于0时表示超时了
                 remaining = timeout - elapsed;
             } while (remaining > 0);
 
@@ -1076,25 +1080,35 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      */
     private Map<TopicPartition, List<ConsumerRecord<K, V>>> pollOnce(long timeout) {
         client.maybeTriggerWakeup();
+        //1. 是否已经找到GroupCoordinator，如果没有则发送查找请求
+        //2. 主题分区发送变化了变化，需要做重平衡操作
         coordinator.poll(time.milliseconds(), timeout);
 
         // fetch positions if we have partitions we're subscribed to that we
         // don't know the offset for
+        // 如果订阅的所有分区的Offset还没有找见，则用coordinator发送拉取偏移量请求
         if (!subscriptions.hasAllFetchPositions())
             updateFetchPositions(this.subscriptions.missingFetchPositions());
 
         // if data is available already, return it immediately
+        // 先看下补发的请求有没有数据（poll()中client.pollNoWakeup()发送的请求）
         Map<TopicPartition, List<ConsumerRecord<K, V>>> records = fetcher.fetchedRecords();
         if (!records.isEmpty())
             return records;
 
         // send any new fetches (won't resend pending fetches)
+        // 调用这个方法后，还没有发送抓取消息请求，而是将请求放到ConsumerNetworkClient.unsent队列中
         fetcher.sendFetches();
 
         long now = time.milliseconds();
         long pollTimeout = Math.min(coordinator.timeToNextPoll(now), timeout);
 
+        //遍历ConsumerNetworkClient.unsent队列中的请求，从服务器抓取数据
         client.poll(pollTimeout, now, new PollCondition() {
+            /**
+             * 如果没有拉取到消息就阻塞一会，最终会调用Selector.select(timeout)方法
+             * @return fetcher.hasCompletedFetches() 还没有拉取到消息
+             */
             @Override
             public boolean shouldBlock() {
                 // since a fetch might be completed by the background thread, we need this poll condition

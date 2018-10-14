@@ -32,7 +32,7 @@ import java.util.concurrent.ExecutionException;
 
 public class KafkaNewConsumerProducer {
     public static void main(String[] args) {
-      /*  boolean isAsync = args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
+       /* boolean isAsync = args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
         Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
         producerThread.start();*/
 
@@ -40,11 +40,6 @@ public class KafkaNewConsumerProducer {
         consumerThread.start();
     }
 
-    //@Test
-    public void producer(){
-        Producer producerThread = new Producer(KafkaProperties.TOPIC, false);
-        producerThread.start();
-    }
 }
 
 class Consumer extends ShutdownableThread {
@@ -103,6 +98,13 @@ class Producer extends Thread {
         this.topic = topic;
         this.isAsync = isAsync;
     }
+
+    public static void main(String[] args) {
+        boolean isAsync = args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
+        Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
+        producerThread.start();
+    }
+
 
     public void run() {
         int messageNo = 1;

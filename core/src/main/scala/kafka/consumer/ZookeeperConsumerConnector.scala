@@ -323,6 +323,7 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
     }
   }
 
+  //checkpointedZkOffsets用于缓存Consumer客户端拉取Offset，当
   def commitOffsetToZooKeeper(topicPartition: TopicAndPartition, offset: Long) {
     if (checkpointedZkOffsets.get(topicPartition) != offset) {
       val topicDirs = new ZKGroupTopicDirs(config.groupId, topicPartition.topic)
@@ -339,11 +340,12 @@ private[kafka] class ZookeeperConsumerConnector(val config: ConsumerConfig,
 
   def commitOffsets(isAutoCommit: Boolean) {
 
+    // 集合中元素为Tuple2类型的能通过加上 :_*转换成Map，例如 Map(Seq((1,"abc")): _*)转换成Map(1 -> abc)
     val offsetsToCommit =
       immutable.Map(topicRegistry.values.flatMap { partitionTopicInfos =>
-        partitionTopicInfos.values.map { info =>
-          TopicAndPartition(info.topic, info.partitionId) -> OffsetAndMetadata(info.getConsumeOffset())
-        }
+          partitionTopicInfos.values.map { info =>
+            TopicAndPartition(info.topic, info.partitionId) -> OffsetAndMetadata(info.getConsumeOffset())
+          }
       }.toSeq: _*)
 
     commitOffsets(offsetsToCommit, isAutoCommit)

@@ -748,6 +748,10 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             future.complete(timestampOffsetMap);
     }
 
+    /**
+     * 创建拉取请求之前，先过滤掉一nextInLineRecords(下一次要抓取的完成的记录) 和completedFetches(抓取完成分区)的请求
+     * @return
+     */
     private List<TopicPartition> fetchablePartitions() {
         Set<TopicPartition> exclude = new HashSet<>();
         List<TopicPartition> fetchable = subscriptions.fetchablePartitions();

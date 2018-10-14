@@ -52,6 +52,7 @@ import java.util.regex.Pattern;
  * This class also maintains a cache of the latest commit position for each of the assigned
  * partitions. This is updated through {@link #committed(TopicPartition, OffsetAndMetadata)} and can be used
  * to set the initial fetch position (e.g. {@link Fetcher#resetOffset(TopicPartition)}.
+ * 消费者订阅状态对象
  */
 public class SubscriptionState {
     private static final String SUBSCRIPTION_EXCEPTION_MESSAGE =
@@ -74,6 +75,7 @@ public class SubscriptionState {
     private final Set<String> groupSubscription;
 
     /* the partitions that are currently assigned, note that the order of partition matters (see FetchBuilder for more details) */
+    /*字典保存了分配给消费者的分区到分区状态映射关系 */
     private final PartitionStates<TopicPartitionState> assignment;
 
     /* do we need to request the latest committed offsets from the coordinator? */

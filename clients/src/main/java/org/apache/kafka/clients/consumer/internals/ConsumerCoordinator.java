@@ -283,6 +283,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
         invokeCompletedOffsetCommitCallbacks();
 
         if (subscriptions.partitionsAutoAssigned()) {
+            //父类中coordinator变量不为空则表示找到主coordiantor了
             if (coordinatorUnknown()) {
                 ensureCoordinatorReady();
                 now = time.milliseconds();
@@ -450,6 +451,7 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
 
     /**
      * Refresh the committed offsets for provided partitions.
+     * 服务端记录的这个偏移量可能是同一个消费组其他消费者提交的
      */
     public void refreshCommittedOffsetsIfNeeded() {
         if (subscriptions.refreshCommitsNeeded()) {

@@ -19,13 +19,7 @@ package org.apache.kafka.clients.consumer.internals;
 import org.apache.kafka.clients.ClientResponse;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Node;
-import org.apache.kafka.common.errors.DisconnectException;
-import org.apache.kafka.common.errors.GroupAuthorizationException;
-import org.apache.kafka.common.errors.CoordinatorNotAvailableException;
-import org.apache.kafka.common.errors.IllegalGenerationException;
-import org.apache.kafka.common.errors.RebalanceInProgressException;
-import org.apache.kafka.common.errors.RetriableException;
-import org.apache.kafka.common.errors.UnknownMemberIdException;
+import org.apache.kafka.common.errors.*;
 import org.apache.kafka.common.metrics.Measurable;
 import org.apache.kafka.common.metrics.MetricConfig;
 import org.apache.kafka.common.metrics.Metrics;
@@ -35,18 +29,8 @@ import org.apache.kafka.common.metrics.stats.Count;
 import org.apache.kafka.common.metrics.stats.Max;
 import org.apache.kafka.common.metrics.stats.Rate;
 import org.apache.kafka.common.protocol.Errors;
-import org.apache.kafka.common.requests.FindCoordinatorRequest;
-import org.apache.kafka.common.requests.FindCoordinatorResponse;
-import org.apache.kafka.common.requests.HeartbeatRequest;
-import org.apache.kafka.common.requests.HeartbeatResponse;
-import org.apache.kafka.common.requests.JoinGroupRequest;
+import org.apache.kafka.common.requests.*;
 import org.apache.kafka.common.requests.JoinGroupRequest.ProtocolMetadata;
-import org.apache.kafka.common.requests.JoinGroupResponse;
-import org.apache.kafka.common.requests.LeaveGroupRequest;
-import org.apache.kafka.common.requests.LeaveGroupResponse;
-import org.apache.kafka.common.requests.OffsetCommitRequest;
-import org.apache.kafka.common.requests.SyncGroupRequest;
-import org.apache.kafka.common.requests.SyncGroupResponse;
 import org.apache.kafka.common.utils.KafkaThread;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -59,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.kafka.common.errors.InterruptException;
 
 /**
  * AbstractCoordinator implements group management for a single group member by interacting with
@@ -213,6 +196,7 @@ public abstract class AbstractCoordinator implements Closeable {
         long remainingMs = timeoutMs;
 
         while (coordinatorUnknown()) {
+            //从broker上查找主Coordinator信息，主题__consumer_offsets-x分区主副本所在的broker就是主GroupCoordinator
             RequestFuture<Void> future = lookupCoordinator();
             client.poll(future, remainingMs);
 
@@ -600,6 +584,7 @@ public abstract class AbstractCoordinator implements Closeable {
             clearFindCoordinatorFuture();
             if (error == Errors.NONE) {
                 synchronized (AbstractCoordinator.this) {
+                    //成功找到了主协调器
                     AbstractCoordinator.this.coordinator = new Node(
                             Integer.MAX_VALUE - findCoordinatorResponse.node().id(),
                             findCoordinatorResponse.node().host(),
