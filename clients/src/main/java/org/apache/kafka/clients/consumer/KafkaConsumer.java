@@ -741,7 +741,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
                     config.getInt(ConsumerConfig.FETCH_MAX_BYTES_CONFIG),
                     config.getInt(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG),
                     config.getInt(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG),
-                    config.getInt(ConsumerConfig.MAX_POLL_RECORDS_CONFIG),
+                    config.getInt(ConsumerConfig.MAX_POLL_RECORDS_CONFIG),//每次拉取消息的最大数量
                     config.getBoolean(ConsumerConfig.CHECK_CRCS_CONFIG),
                     this.keyDeserializer,
                     this.valueDeserializer,

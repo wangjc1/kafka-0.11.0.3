@@ -107,6 +107,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     private final FetchManagerMetrics sensors;
     private final SubscriptionState subscriptions;
     //sendFetches()调用成功后，在回调方法中将拉取到的数据添加到拉取到的数据队列
+    //一个CompletedFetch对象存放某个分区的拉取集合
     private final ConcurrentLinkedQueue<CompletedFetch> completedFetches;
     private final BufferSupplier decompressionBufferSupplier = BufferSupplier.create();
 
@@ -522,6 +523,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         try {
             //while循环第一次先从completedFetches队列中弹出一条数据
             while (recordsRemaining > 0) {
+                //fetchRecords(nextInLineRecords, recordsRemaining)=>partitionRecords.drain()方法中更新isFetched为true，表示已完成一次拉取
                 if (nextInLineRecords == null || nextInLineRecords.isFetched) {
                     CompletedFetch completedFetch = completedFetches.peek();
                     if (completedFetch == null) break;
@@ -530,7 +532,8 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                     //处理完毕后，删除头部元素
                     completedFetches.poll();
                 } else {
-                    //解析拉取完成的数据并更新拉取位置
+                    //解析拉取完成的数据并更新拉取位置，records的size大于0时，表示拉取到了数据
+                    //recordsRemaining为每次拉取消息的最大数量，由max.poll.records参数配置
                     List<ConsumerRecord<K, V>> records = fetchRecords(nextInLineRecords, recordsRemaining);
                     TopicPartition partition = nextInLineRecords.partition;
                     if (!records.isEmpty()) {
@@ -1103,6 +1106,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                     // use the last record to do deserialization again.
                     if (cachedRecordException == null) {
                         corruptLastRecord = true;
+                        //nextFetchedRecord()方法同时遍历下一个currentBatch
                         lastRecord = nextFetchedRecord();
                         corruptLastRecord = false;
                     }
