@@ -464,11 +464,19 @@ public class SubscriptionState {
             return position != null;
         }
 
+        /**
+         *  第一次请求服务器初始化offset时调用
+         * @param offset
+         */
         private void seek(long offset) {
             this.position = offset;
             this.resetStrategy = null;
         }
 
+        /**
+         * 没拉取一次消息调用一次，在内存中不断动态调用
+         * @param offset
+         */
         private void position(long offset) {
             if (!hasValidPosition())
                 throw new IllegalStateException("Cannot set a new position without a valid current position");

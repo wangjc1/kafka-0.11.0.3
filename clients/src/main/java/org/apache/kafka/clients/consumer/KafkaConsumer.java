@@ -1077,6 +1077,10 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      * (if auto-commit is enabled), and offset resets (if an offset reset policy is defined).
      * @param timeout The maximum time to block in the underlying call to {@link ConsumerNetworkClient#poll(long)}.
      * @return The fetched records (may be empty)
+     *
+     * 1. 每拉取一次，会将拉取到的数据放到completedFetches队列中
+     * 2. 然后调用fetcher.fetchedRecords()方法循环遍历completedFetches队列，从队列中解析拉取到的数据，并转化成ConsumerRecord结构
+     * 3. 拉取完成后更新offset成最新拉取位置
      */
     private Map<TopicPartition, List<ConsumerRecord<K, V>>> pollOnce(long timeout) {
         client.maybeTriggerWakeup();
@@ -1087,12 +1091,20 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         // fetch positions if we have partitions we're subscribed to that we
         // don't know the offset for
         // 如果订阅的所有分区的Offset还没有找见，则用coordinator发送拉取偏移量请求
-        if (!subscriptions.hasAllFetchPositions())
+        // 注意：这个方法只会在客户端第一次消费消息的是时候调用，因为去服务器上拉取offsets是比较费时间的
+        if (!subscriptions.hasAllFetchPositions()){
             updateFetchPositions(this.subscriptions.missingFetchPositions());
+            log.info("update all position of topic partition");
+        }
 
         // if data is available already, return it immediately
         // 先看下补发的请求有没有数据（poll()中client.pollNoWakeup()发送的请求）
         Map<TopicPartition, List<ConsumerRecord<K, V>>> records = fetcher.fetchedRecords();
+        for(TopicPartition tp:records.keySet()){
+            log.info(tp.toString()+"="+subscriptions.position(tp));
+        }
+
+
         if (!records.isEmpty())
             return records;
 

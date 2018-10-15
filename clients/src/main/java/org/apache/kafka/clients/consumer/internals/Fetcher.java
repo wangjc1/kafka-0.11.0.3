@@ -106,6 +106,7 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
     private final Metadata metadata;
     private final FetchManagerMetrics sensors;
     private final SubscriptionState subscriptions;
+    //sendFetches()调用成功后，在回调方法中将拉取到的数据添加到拉取到的数据队列
     private final ConcurrentLinkedQueue<CompletedFetch> completedFetches;
     private final BufferSupplier decompressionBufferSupplier = BufferSupplier.create();
 
@@ -511,20 +512,25 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
      * @return The fetched records per partition
      * @throws OffsetOutOfRangeException If there is OffsetOutOfRange error in fetchResponse and
      *         the defaultResetPolicy is NONE
+     *  注意： 如果没有任何消息，while将会一直循环，运行recordsRemaining时长后退出，
+     *        所以这里要是没数据短时间内可能是个死循环，可以设计成一个生产消费队列模型
      */
     public Map<TopicPartition, List<ConsumerRecord<K, V>>> fetchedRecords() {
         Map<TopicPartition, List<ConsumerRecord<K, V>>> fetched = new HashMap<>();
         int recordsRemaining = maxPollRecords;
 
         try {
+            //while循环第一次先从completedFetches队列中弹出一条数据
             while (recordsRemaining > 0) {
                 if (nextInLineRecords == null || nextInLineRecords.isFetched) {
                     CompletedFetch completedFetch = completedFetches.peek();
                     if (completedFetch == null) break;
 
                     nextInLineRecords = parseCompletedFetch(completedFetch);
+                    //处理完毕后，删除头部元素
                     completedFetches.poll();
                 } else {
+                    //解析拉取完成的数据并更新拉取位置
                     List<ConsumerRecord<K, V>> records = fetchRecords(nextInLineRecords, recordsRemaining);
                     TopicPartition partition = nextInLineRecords.partition;
                     if (!records.isEmpty()) {
@@ -551,6 +557,10 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
         return fetched;
     }
 
+    /**
+     * 1. 解析partitionRecords拉取的数据结构成ConsumerRecord
+     * 2. 更新拉取位置(offset)
+     */
     private List<ConsumerRecord<K, V>> fetchRecords(PartitionRecords partitionRecords, int maxRecords) {
         if (!subscriptions.isAssigned(partitionRecords.partition)) {
             // this can happen when a rebalance happened before fetched records are returned to the consumer's poll call
@@ -569,6 +579,8 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                 long nextOffset = partitionRecords.nextFetchOffset;
                 log.trace("Returning fetched records at offset {} for assigned partition {} and update " +
                         "position to {}", position, partitionRecords.partition, nextOffset);
+
+                //更新拉取位置
                 subscriptions.position(partitionRecords.partition, nextOffset);
 
                 Long partitionLag = subscriptions.partitionLag(partitionRecords.partition, isolationLevel);

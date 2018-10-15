@@ -127,7 +127,7 @@ class Producer extends Thread {
                 }
             }
             ++messageNo;
-            if(messageNo>1000) break;
+            if(messageNo>2000) break;
         }
     }
 
