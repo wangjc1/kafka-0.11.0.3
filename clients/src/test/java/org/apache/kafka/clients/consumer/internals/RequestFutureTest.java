@@ -162,6 +162,9 @@ public class RequestFutureTest {
         assertOnFailureInvoked(afterListener);
     }
 
+    /**
+     * 具体实例参考：KafkaConsumer中的fetcher.sendFetches();方法
+     */
     @Test
     public void listenersInvokedIfAddedBeforeAndAfterCompletion() {
         RequestFuture<Void> future = new RequestFuture<>();
@@ -171,6 +174,8 @@ public class RequestFutureTest {
 
         future.complete(null);
 
+        //乍一看怎么在调用完complete()方法后任然还能触发listener呢，那肯定是addListener方法里作怪了
+        //发现有行代码else if (succeeded()) fireSuccess();也就是每添加一个listener就有可能触发成功或失败，但第一次肯定不会触发
         MockRequestFutureListener<Void> afterListener = new MockRequestFutureListener<>();
         future.addListener(afterListener);
 
@@ -178,10 +183,19 @@ public class RequestFutureTest {
         assertOnSuccessInvoked(afterListener);
     }
 
+    /**
+     * 具体实例参考：
+     * AbstractCoordinator.sendGroupCoordinatorRequest()
+     * AbstractCoordinator.sendJoinGroupRequest()
+     */
     @Test
     public void testComposeSuccessCase() {
         RequestFuture<String> future = new RequestFuture<>();
         RequestFuture<Integer> composed = future.compose(new RequestFutureAdapter<String, Integer>() {
+            /**
+             * 在compose方法中调用重新构建出一个新的newFuture
+             * 然后再Adapter的onSuccess方法中触发新构建的newFuture的成功或失败方法
+             */
             @Override
             public void onSuccess(String value, RequestFuture<Integer> future) {
                 future.complete(value.length());
@@ -204,6 +218,17 @@ public class RequestFutureTest {
                 future.complete(value.length());
             }
         });
+        /*composed.addListener(new RequestFutureListener<Integer>() {
+            @Override
+            public void onSuccess(Integer value) {
+                System.out.println("composed success...");
+            }
+
+            @Override
+            public void onFailure(RuntimeException e) {
+                System.out.println("composed failed...");
+            }
+        });*/
 
         RuntimeException e = new RuntimeException();
         future.raise(e);
@@ -211,6 +236,53 @@ public class RequestFutureTest {
         assertTrue(composed.isDone());
         assertTrue(composed.failed());
         assertEquals(e, composed.exception());
+    }
+
+    /**
+     * 同时通知多个Future，具体实例参考：
+     * AbstractCoordinator.sendJoinGroupRequest()
+     * onJoinLeader(joinResponse).chain(future);
+     * onJoinFollower().chain(future);
+     */
+    @Test
+    public void testChainSuccessCase() {
+        RequestFuture<Void> futureA = new RequestFuture<>();
+        RequestFuture<Void> futureB = new RequestFuture<>();
+        RequestFuture<Void> futureC = new RequestFuture<>();
+        futureA.chain(futureB);
+        futureB.chain(futureC);
+
+        futureA.addListener(new RequestFutureListener<Void>() {
+            @Override
+            public void onSuccess(Void value) {
+                System.out.println("futureA is success...");
+            }
+            @Override
+            public void onFailure(RuntimeException e) {}
+        });
+
+        futureB.addListener(new RequestFutureListener<Void>() {
+            @Override
+            public void onSuccess(Void value) {
+                System.out.println("futureB is success...");
+            }
+            @Override
+            public void onFailure(RuntimeException e) {}
+        });
+
+        futureC.addListener(new RequestFutureListener<Void>() {
+            @Override
+            public void onSuccess(Void value) {
+                System.out.println("futureC is success...");
+            }
+            @Override
+            public void onFailure(RuntimeException e) {}
+        });
+
+        futureA.complete(null);
+
+        assertTrue(futureA.isDone() && futureB.isDone());
+        assertTrue(futureA.succeeded() && futureB.succeeded());
     }
 
     private static <T> void assertOnSuccessInvoked(MockRequestFutureListener<T> listener) {

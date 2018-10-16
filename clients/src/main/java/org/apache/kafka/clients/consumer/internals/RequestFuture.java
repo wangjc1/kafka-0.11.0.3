@@ -212,6 +212,10 @@ public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
         return adapted;
     }
 
+    /**
+     * 在Future中添加Future，形成一个链式结构
+     * @param future
+     */
     public void chain(final RequestFuture<T> future) {
         addListener(new RequestFutureListener<T>() {
             @Override

@@ -275,6 +275,7 @@ public abstract class AbstractCoordinator implements Closeable {
                 throw cause;
             }
             // Awake the heartbeat thread if needed
+            // 如果要
             if (heartbeat.shouldHeartbeat(now)) {
                 notify();
             }
@@ -384,6 +385,7 @@ public abstract class AbstractCoordinator implements Closeable {
 
             state = MemberState.REBALANCING;
             joinFuture = sendJoinGroupRequest();
+            //consumer客户端加入成功后，更新状态，启用心跳线程
             joinFuture.addListener(new RequestFutureListener<ByteBuffer>() {
                 @Override
                 public void onSuccess(ByteBuffer value) {
@@ -453,6 +455,7 @@ public abstract class AbstractCoordinator implements Closeable {
                         AbstractCoordinator.this.generation = new Generation(joinResponse.generationId(),
                                 joinResponse.memberId(), joinResponse.groupProtocol());
                         if (joinResponse.isLeader()) {
+                            //加入到consumer group中，加入成功后回调future
                             onJoinLeader(joinResponse).chain(future);
                         } else {
                             onJoinFollower().chain(future);
@@ -916,20 +919,29 @@ public abstract class AbstractCoordinator implements Closeable {
                         client.pollNoWakeup();
                         long now = time.milliseconds();
 
+                        //if..if else..else中只有运行到else才开始发送心跳
                         if (coordinatorUnknown()) {
                             if (findCoordinatorFuture != null || lookupCoordinator().failed())
                                 // the immediate future check ensures that we backoff properly in the case that no
                                 // brokers are available to connect to.
                                 AbstractCoordinator.this.wait(retryBackoffMs);
-                        } else if (heartbeat.sessionTimeoutExpired(now)) {
+                        }
+                        //如果会话超时，则移除coordinator所在Node的所有请求，并把这些请求标记成失败
+                        else if (heartbeat.sessionTimeoutExpired(now)) {
                             // the session timeout has expired without seeing a successful heartbeat, so we should
                             // probably make sure the coordinator is still healthy.
                             coordinatorDead();
-                        } else if (heartbeat.pollTimeoutExpired(now)) {
+                        }
+                        //调用pollHeartbeat(now)方法超时了，说明消费者可能挂了，但协调者没问题，设置rejoinNeeded=true
+                        else if (heartbeat.pollTimeoutExpired(now)) {
                             // the poll timeout has expired, which means that the foreground thread has stalled
                             // in between calls to poll(), so we explicitly leave the group.
                             maybeLeaveGroup();
-                        } else if (!heartbeat.shouldHeartbeat(now)) {
+                        }
+                        //如果还不发送下一次心跳，则调用wait()方法阻塞
+                        //每次拉取消息时，调用pollHeartbeat()方法检测是否能发送下一次心跳了
+                        //如果heartbeat.shouldHeartbeat(now)为true，则调用notify()唤醒
+                        else if (!heartbeat.shouldHeartbeat(now)) {
                             // poll again after waiting for the retry backoff in case the heartbeat failed or the
                             // coordinator disconnected
                             AbstractCoordinator.this.wait(retryBackoffMs);

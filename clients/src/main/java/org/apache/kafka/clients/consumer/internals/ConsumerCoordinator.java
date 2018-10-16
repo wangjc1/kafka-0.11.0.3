@@ -296,6 +296,9 @@ public final class ConsumerCoordinator extends AbstractCoordinator {
                 if (subscriptions.hasPatternSubscription())
                     client.ensureFreshMetadata();
 
+                //1. 确保已经找到了主oordinator
+                //2. 开启心跳线程
+                //3. 检查是否有新的Consumer加入
                 ensureActiveGroup();
                 now = time.milliseconds();
             }

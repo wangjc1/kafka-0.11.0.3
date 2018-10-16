@@ -21,13 +21,19 @@ package org.apache.kafka.clients.consumer.internals;
  */
 public final class Heartbeat {
     private final long sessionTimeout;
+    //每次发送心跳间隔时间
     private final long heartbeatInterval;
+    //由max.poll.interval.ms参数配置，最大拉取时长
     private final long maxPollInterval;
     private final long retryBackoffMs;
 
+    //上一次发送心跳的时间点
     private volatile long lastHeartbeatSend; // volatile since it is read by metrics
+    //上一次心跳成功响应时间点
     private long lastHeartbeatReceive;
+    //查找主coordinator后响应GroupCoordinatorResponseHandler回调中调用resetTimeouts()方法更新的一个时间点
     private long lastSessionReset;
+    //上一次调用pollHeartbeat(now)方法的时间点
     private long lastPoll;
     private boolean heartbeatFailed;
 
@@ -70,6 +76,7 @@ public final class Heartbeat {
     }
 
     public long timeToNextHeartbeat(long now) {
+        //截止目前上一次心跳发送过去多长时间了，如果一次心跳还没发送过，则以发现coordinator的时间点为上一次发送心跳的时间
         long timeSinceLastHeartbeat = now - Math.max(lastHeartbeatSend, lastSessionReset);
         final long delayToNextHeartbeat;
         if (heartbeatFailed)
