@@ -58,15 +58,19 @@ public class RangeAssignor extends AbstractPartitionAssignor {
     @Override
     public Map<String, List<TopicPartition>> assign(Map<String, Integer> partitionsPerTopic,
                                                     Map<String, Subscription> subscriptions) {
+        //Map<Topic, List<ConsumerID>> ：  主题和consumer客户端映射表
         Map<String, List<String>> consumersPerTopic = consumersPerTopic(subscriptions);
+        //Map<ConsumerID，TopicPartition> ： consumer客户端和主题分区映射表
         Map<String, List<TopicPartition>> assignment = new HashMap<>();
         for (String memberId : subscriptions.keySet())
             assignment.put(memberId, new ArrayList<TopicPartition>());
 
         for (Map.Entry<String, List<String>> topicEntry : consumersPerTopic.entrySet()) {
             String topic = topicEntry.getKey();
+            //订阅当前topic的consumer客户端列表
             List<String> consumersForTopic = topicEntry.getValue();
 
+            //当前topic的分区数
             Integer numPartitionsForTopic = partitionsPerTopic.get(topic);
             if (numPartitionsForTopic == null)
                 continue;
@@ -76,6 +80,8 @@ public class RangeAssignor extends AbstractPartitionAssignor {
             int numPartitionsPerConsumer = numPartitionsForTopic / consumersForTopic.size();
             int consumersWithExtraPartition = numPartitionsForTopic % consumersForTopic.size();
 
+            //主题分区列表 List<[topic]-[partitionId]>
+            //分配算法基本和0.8版本一样，参考 PartitionAssignor.scala
             List<TopicPartition> partitions = AbstractPartitionAssignor.partitions(topic, numPartitionsForTopic);
             for (int i = 0, n = consumersForTopic.size(); i < n; i++) {
                 int start = numPartitionsPerConsumer * i + Math.min(i, consumersWithExtraPartition);

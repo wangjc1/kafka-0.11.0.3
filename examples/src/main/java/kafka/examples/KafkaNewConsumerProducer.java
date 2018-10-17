@@ -30,6 +30,11 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * 1. 新版Consumer的动态平衡和老板的机制不一样，老板的Consumer客户端连接信息存储在ZK中，
+ *    所以可以监听其动态变化，而新版是通过HeartbeatThread不断发送心跳，在心跳请求响应回调中来确定是否需要Rebalance
+ *
+ */
 public class KafkaNewConsumerProducer {
     public static void main(String[] args) {
        /* boolean isAsync = args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");

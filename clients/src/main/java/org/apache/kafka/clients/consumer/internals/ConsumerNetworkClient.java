@@ -458,6 +458,9 @@ public class ConsumerNetworkClient implements Closeable {
         }
     }
 
+    /**
+     * 这个类是为了统一存放到请求响应队列中，后续可以从队列中弹出处理
+     */
     private class RequestFutureCompletionHandler implements RequestCompletionHandler {
         private final RequestFuture<ClientResponse> future;
         private ClientResponse response;

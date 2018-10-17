@@ -16,9 +16,9 @@
  */
 package org.apache.kafka.clients.consumer;
 
-import java.util.Collection;
-
 import org.apache.kafka.common.TopicPartition;
+
+import java.util.Collection;
 
 /**
  * A callback interface that the user can implement to trigger custom actions when the set of partitions assigned to the
@@ -75,6 +75,7 @@ import org.apache.kafka.common.TopicPartition;
  *   }
  * }
  * </pre>
+ * 通过实现这个接口可以手动在外部管理offset
  */
 public interface ConsumerRebalanceListener {
 
@@ -97,6 +98,7 @@ public interface ConsumerRebalanceListener {
      * @param partitions The list of partitions that were assigned to the consumer on the last rebalance
      * @throws org.apache.kafka.common.errors.WakeupException If raised from a nested call to {@link KafkaConsumer}
      * @throws org.apache.kafka.common.errors.InterruptException If raised from a nested call to {@link KafkaConsumer}
+     * rebalance前分配的区
      */
     void onPartitionsRevoked(Collection<TopicPartition> partitions);
 
@@ -119,6 +121,7 @@ public interface ConsumerRebalanceListener {
      *            assigned to the consumer)
      * @throws org.apache.kafka.common.errors.WakeupException If raised from a nested call to {@link KafkaConsumer}
      * @throws org.apache.kafka.common.errors.InterruptException If raised from a nested call to {@link KafkaConsumer}
+     * rebalance后重新分配的分区
      */
     void onPartitionsAssigned(Collection<TopicPartition> partitions);
 }

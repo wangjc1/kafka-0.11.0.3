@@ -348,6 +348,8 @@ public abstract class AbstractCoordinator implements Closeable {
             RequestFuture<ByteBuffer> future = initiateJoinGroup();
             client.poll(future);
 
+            //rebalance成功后，更新当前consumer客户端subscriptions数据中已分配的分区
+            //future.value()值是一个ByteBuffer类型，需要反序列化一下
             if (future.succeeded()) {
                 onJoinComplete(generation.generationId, generation.memberId, generation.protocol, future.value());
 

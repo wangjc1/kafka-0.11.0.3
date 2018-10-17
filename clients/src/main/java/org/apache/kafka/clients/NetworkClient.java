@@ -393,6 +393,8 @@ public class NetworkClient implements KafkaClient {
                         header.apiVersion(), clientRequest.apiKey(), request, clientRequest.correlationId(), nodeId);
             }
         }
+        //serialize()序列号方法将用到groupProtocols里面的协议数据
+        //会把当前请求头按照不同协议来编码
         Send send = request.toSend(nodeId, header);
         InFlightRequest inFlightRequest = new InFlightRequest(
                 header,
