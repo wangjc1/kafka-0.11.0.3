@@ -146,6 +146,19 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
+  /**
+    *调试日子，查看消费客户端加入组的情况
+    */
+  private def mylog(memberId: String,logType:String,members:String): Unit = {
+    var _memberId = memberId match {
+      case "" => "UNKOWN"
+      case _  =>  memberId
+    }
+
+    println(_memberId + s":协调者准备开始处理${logType}请求")
+    println(_memberId + s"${logType}，成员： 【$members】 ")
+  }
+
   private def doJoinGroup(group: GroupMetadata,
                           memberId: String,
                           clientId: String,
@@ -156,6 +169,8 @@ class GroupCoordinator(val brokerId: Int,
                           protocols: List[(String, Array[Byte])],
                           responseCallback: JoinCallback) {
     group.inLock {
+      mylog(memberId,"加入组",group.allMembers.mkString("，"))
+
       if (!group.is(Empty) && (!group.protocolType.contains(protocolType) || !group.supportsProtocols(protocols.map(_._1).toSet))) {
         // if the new member does not support the group protocol, reject it
         responseCallback(joinError(memberId, Errors.INCONSISTENT_GROUP_PROTOCOL))
@@ -259,6 +274,8 @@ class GroupCoordinator(val brokerId: Int,
                           groupAssignment: Map[String, Array[Byte]],
                           responseCallback: SyncCallback) {
     group.inLock {
+      mylog(memberId,"同步组",group.allMembers.mkString("，"))
+
       if (!group.has(memberId)) {
         responseCallback(Array.empty, Errors.UNKNOWN_MEMBER_ID)
       } else if (generationId != group.generationId) {

@@ -195,6 +195,8 @@ public class RequestFuture<T> implements ConsumerNetworkClient.PollCondition {
      * @param adapter The adapter which does the conversion
      * @param <S> The type of the future adapted to
      * @return The new future
+     *
+     * 利用组合模式来转换结果
      */
     public <S> RequestFuture<S> compose(final RequestFutureAdapter<T, S> adapter) {
         final RequestFuture<S> adapted = new RequestFuture<>();

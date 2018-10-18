@@ -441,11 +441,13 @@ public class NetworkClient implements KafkaClient {
         long updatedNow = this.time.milliseconds();
         List<ClientResponse> responses = new ArrayList<>();
         handleCompletedSends(responses, updatedNow);
+        //将完成请求的response(里面包含request的callback回调方法)结果添加到responses队列
         handleCompletedReceives(responses, updatedNow);
         handleDisconnections(responses, updatedNow);
         handleConnections();
         handleInitiateApiVersionRequests(updatedNow);
         handleTimedOutRequests(responses, updatedNow);
+        //循环回调构建request请求时附加的回调方法
         completeResponses(responses);
 
         return responses;

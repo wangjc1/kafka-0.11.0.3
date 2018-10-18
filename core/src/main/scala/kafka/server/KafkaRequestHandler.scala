@@ -27,6 +27,7 @@ import org.apache.kafka.common.internals.FatalExitError
 import org.apache.kafka.common.utils.{Time, Utils}
 
 /**
+  * 由KafkaRequestHandlerPool创建并初始化，当客户端请求来了后，由业务线程池分配一个线程处理
  * A thread that answers kafka requests.
  */
 class KafkaRequestHandler(id: Int,

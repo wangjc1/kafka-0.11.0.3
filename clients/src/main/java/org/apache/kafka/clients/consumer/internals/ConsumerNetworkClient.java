@@ -89,6 +89,12 @@ public class ConsumerNetworkClient implements Closeable {
      * @param node The destination of the request
      * @param requestBuilder A builder for the request payload
      * @return A future which indicates the result of the send.
+     *
+     * 回调流程：
+     * 1. 先构建一个ClientRequest请求和RequestFutureCompletionHandler回调类，并将它们绑定在一起
+     * 2. 因为是异步调用，所以返回一个空的completionHandler.future 结果
+     * 3. 请求成功后在NetworkClient客户端中回调completionHandler的listeners
+     *
      */
     public RequestFuture<ClientResponse> send(Node node, AbstractRequest.Builder<?> requestBuilder) {
         long now = time.milliseconds();
