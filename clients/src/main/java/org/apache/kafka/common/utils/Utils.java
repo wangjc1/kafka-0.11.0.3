@@ -837,4 +837,9 @@ public class Utils {
         if(s==null || s.length()==0) return s;
         return s.substring(0,len);
     }
+
+    public static void println(String s,String... params){
+        if(s==null || s.length()==0) return ;
+        System.out.println(String.format(s,params));
+    }
 }

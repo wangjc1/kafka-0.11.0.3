@@ -249,7 +249,7 @@ class GroupCoordinator(val brokerId: Int,
             }
         }
 
-        //当前group状态是否是“准备再平衡”
+        //当前group状态是否是“准备再平衡”,检查验收操作是否完成
         if (group.is(PreparingRebalance))
           joinPurgatory.checkAndComplete(GroupKey(group.groupId))
 

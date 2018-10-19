@@ -437,7 +437,7 @@ public abstract class AbstractCoordinator implements Closeable {
                 metadata()).setRebalanceTimeout(this.rebalanceTimeoutMs);
 
         log.debug("Sending JoinGroup ({}) to coordinator {}", requestBuilder, this.coordinator);
-        System.out.println(String.format("【%s】Sending JoinGroup Request to coordinator (%s) ", Utils.left(this.generation.memberId,10), this.coordinator));
+        Utils.println(String.format("【%s】Sending JoinGroup Request to coordinator (%s) ", Utils.left(this.generation.memberId,10), this.coordinator));
         return client.send(coordinator, requestBuilder)
                 .compose(new JoinGroupResponseHandler());
     }
@@ -459,7 +459,7 @@ public abstract class AbstractCoordinator implements Closeable {
                         AbstractCoordinator.this.generation = new Generation(joinResponse.generationId(),
                                 joinResponse.memberId(), joinResponse.groupProtocol());
 
-                        System.out.println(String.format("【%s】Receive JoinGroup (generationId=%s) Response ",Utils.left(joinResponse.memberId(),10), joinResponse.generationId()));
+                        Utils.println("【%s】Receive JoinGroup (generationId=%s) Response ",Utils.left(joinResponse.memberId(),10), Integer.toString(joinResponse.generationId()));
                         if (joinResponse.isLeader()) {
                             //加入到consumer group中，加入成功后回调future
                             onJoinLeader(joinResponse).chain(future);
@@ -506,7 +506,7 @@ public abstract class AbstractCoordinator implements Closeable {
                         Collections.<String, ByteBuffer>emptyMap());
         log.debug("Sending follower SyncGroup for group {} to coordinator {}: {}", groupId, this.coordinator,
                 requestBuilder);
-        System.out.println(String.format("【%s】Sending leader SyncGroup to coordinator，Assignment:%s", Utils.left(generation.memberId,10),""));
+        Utils.println("【%s】Sending leader SyncGroup to coordinator，Assignment:%s", Utils.left(generation.memberId,10),"");
         return sendSyncGroupRequest(requestBuilder);
     }
 
@@ -520,7 +520,7 @@ public abstract class AbstractCoordinator implements Closeable {
                     new SyncGroupRequest.Builder(groupId, generation.generationId, generation.memberId, groupAssignment);
             log.debug("Sending leader SyncGroup for group {} to coordinator {}: {}",
                     groupId, this.coordinator, requestBuilder);
-            System.out.println(String.format("【%s】Sending leader SyncGroup to coordinator，Assignment:%s", Utils.left(generation.memberId,10),groupAssignment));
+            Utils.println("【%s】Sending leader SyncGroup to coordinator，Assignment:%s", Utils.left(generation.memberId,10),groupAssignment.toString());
             return sendSyncGroupRequest(requestBuilder);
         } catch (RuntimeException e) {
             return RequestFuture.failure(e);
