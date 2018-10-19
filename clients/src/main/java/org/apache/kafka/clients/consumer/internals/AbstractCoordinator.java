@@ -33,6 +33,7 @@ import org.apache.kafka.common.requests.*;
 import org.apache.kafka.common.requests.JoinGroupRequest.ProtocolMetadata;
 import org.apache.kafka.common.utils.KafkaThread;
 import org.apache.kafka.common.utils.Time;
+import org.apache.kafka.common.utils.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -436,6 +437,7 @@ public abstract class AbstractCoordinator implements Closeable {
                 metadata()).setRebalanceTimeout(this.rebalanceTimeoutMs);
 
         log.debug("Sending JoinGroup ({}) to coordinator {}", requestBuilder, this.coordinator);
+        System.out.println(String.format("【%s】Sending JoinGroup Request to coordinator (%s) ", Utils.left(this.generation.memberId,10), this.coordinator));
         return client.send(coordinator, requestBuilder)
                 .compose(new JoinGroupResponseHandler());
     }
@@ -456,6 +458,8 @@ public abstract class AbstractCoordinator implements Closeable {
                     } else {
                         AbstractCoordinator.this.generation = new Generation(joinResponse.generationId(),
                                 joinResponse.memberId(), joinResponse.groupProtocol());
+
+                        System.out.println(String.format("【%s】Receive JoinGroup (generationId=%s) Response ",Utils.left(joinResponse.memberId(),10), joinResponse.generationId()));
                         if (joinResponse.isLeader()) {
                             //加入到consumer group中，加入成功后回调future
                             onJoinLeader(joinResponse).chain(future);
@@ -502,6 +506,7 @@ public abstract class AbstractCoordinator implements Closeable {
                         Collections.<String, ByteBuffer>emptyMap());
         log.debug("Sending follower SyncGroup for group {} to coordinator {}: {}", groupId, this.coordinator,
                 requestBuilder);
+        System.out.println(String.format("【%s】Sending leader SyncGroup to coordinator，Assignment:%s", Utils.left(generation.memberId,10),""));
         return sendSyncGroupRequest(requestBuilder);
     }
 
@@ -515,6 +520,7 @@ public abstract class AbstractCoordinator implements Closeable {
                     new SyncGroupRequest.Builder(groupId, generation.generationId, generation.memberId, groupAssignment);
             log.debug("Sending leader SyncGroup for group {} to coordinator {}: {}",
                     groupId, this.coordinator, requestBuilder);
+            System.out.println(String.format("【%s】Sending leader SyncGroup to coordinator，Assignment:%s", Utils.left(generation.memberId,10),groupAssignment));
             return sendSyncGroupRequest(requestBuilder);
         } catch (RuntimeException e) {
             return RequestFuture.failure(e);

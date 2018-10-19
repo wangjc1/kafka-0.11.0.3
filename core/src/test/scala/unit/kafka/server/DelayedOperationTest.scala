@@ -58,8 +58,22 @@ class DelayedOperationTest {
   }
 
   @Test
+  def testOneTopicMoreOp() {
+    val r1 = new MockDelayedOperation(100000L)
+    val r2 = new MockDelayedOperation(100000L)
+    assertFalse("r1 not satisfied and hence watched", purgatory.tryCompleteElseWatch(r1, Array("test1")))
+    assertFalse("r2 not satisfied and hence watched", purgatory.tryCompleteElseWatch(r2, Array("test1")))
+
+    assertEquals("检查【Topic=test1】所有操作是否完成失败", 0, purgatory.checkAndComplete("test1"))
+    r1.completable = true
+    r2.completable = true
+
+    assertEquals("检查【Topic=test1】所有操作是否完成失败", 2, purgatory.checkAndComplete("test1"))
+  }
+
+  @Test
   def testRequestExpiry() {
-    val expiration = 20L
+    val expiration = 2000L
     val start = Time.SYSTEM.hiResClockMs
     val r1 = new MockDelayedOperation(expiration)
     val r2 = new MockDelayedOperation(200000L)
@@ -173,6 +187,7 @@ class DelayedOperationTest {
 
       def checkAndComplete(completableOps: Seq[MockDelayedOperation], expectedComplete: Seq[MockDelayedOperation]): Unit = {
         completableOps.foreach(op => op.completable = true)
+        //checkAndComplete()=>maybeTryComplete()这个方法会加lock锁
         val completed = purgatory.checkAndComplete(key)
         assertEquals(expectedComplete.size, completed)
         expectedComplete.foreach(op => assertTrue("Should have completed", op.isCompleted))
@@ -192,6 +207,8 @@ class DelayedOperationTest {
 
       // Lock held by another thread, should not block, only operations that can be
       // locked without blocking on the current thread should complete
+      //会在另一个线程中对ops(0).lock加锁，导致当前线程无法对ops(0)操作执行checkAndComplete()方法
+      //但是ops(1)并没有被其他线程锁住，所以可以正常执行完成操作
       ops = createDelayedOperations(2)
       runOnAnotherThread(ops(0).lock.lock(), true)
       try {

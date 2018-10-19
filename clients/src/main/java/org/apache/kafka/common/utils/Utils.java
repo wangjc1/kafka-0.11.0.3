@@ -833,4 +833,8 @@ public class Utils {
         return res;
     }
 
+    public static String left(String s,int len){
+        if(s==null || s.length()==0) return s;
+        return s.substring(0,len);
+    }
 }

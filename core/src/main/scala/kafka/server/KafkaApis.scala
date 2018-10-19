@@ -1165,6 +1165,9 @@ class KafkaApis(val requestChannel: RequestChannel,
     }
   }
 
+  /**
+    * consumer join group request
+    */
   def handleJoinGroupRequest(request: RequestChannel.Request) {
     val joinGroupRequest = request.body[JoinGroupRequest]
 
@@ -1195,6 +1198,7 @@ class KafkaApis(val requestChannel: RequestChannel,
       )
     } else {
       // let the coordinator to handle join-group
+      //protocols = List<Tuple(分配算法，订阅的主题(字节))>
       val protocols = joinGroupRequest.groupProtocols().asScala.map(protocol =>
         (protocol.name, Utils.toArray(protocol.metadata))).toList
       groupCoordinator.handleJoinGroup(
@@ -1210,6 +1214,9 @@ class KafkaApis(val requestChannel: RequestChannel,
     }
   }
 
+  /**
+    * consumer sync group request
+    */
   def handleSyncGroupRequest(request: RequestChannel.Request) {
     val syncGroupRequest = request.body[SyncGroupRequest]
 

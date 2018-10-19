@@ -131,11 +131,13 @@ class GroupCoordinator(val brokerId: Int,
       // only try to create the group if the group is not unknown AND
       // the member id is UNKNOWN, if member is specified but group does not
       // exist we should reject the request
+      //从groupMetadataCache缓存中获取GroupMetadata信息
       groupManager.getGroup(groupId) match {
         case None =>
           if (memberId != JoinGroupRequest.UNKNOWN_MEMBER_ID) {
             responseCallback(joinError(memberId, Errors.UNKNOWN_MEMBER_ID))
           } else {
+            //第一次客户端发送join group请求时，缓存里还没有，这时新建一个GroupMetadata(groupId)
             val group = groupManager.addGroup(new GroupMetadata(groupId))
             doJoinGroup(group, memberId, clientId, clientHost, rebalanceTimeoutMs, sessionTimeoutMs, protocolType, protocols, responseCallback)
           }
@@ -149,14 +151,17 @@ class GroupCoordinator(val brokerId: Int,
   /**
     *调试日子，查看消费客户端加入组的情况
     */
-  private def mylog(memberId: String,logType:String,members:String): Unit = {
+  private def mylog(memberId: String,logType:String,group: GroupMetadata): Unit = {
     var _memberId = memberId match {
       case "" => "UNKOWN"
-      case _  =>  memberId
+      case _  =>  memberId.substring(0,10)
     }
 
-    println(_memberId + s":协调者准备开始处理${logType}请求")
-    println(_memberId + s"${logType}，成员： 【$members】 ")
+    println(_memberId + s"： 协调者准备开始处理${logType}请求")
+    /*group.inLock({
+      val members = group.allMembers.map(s=> s.substring(0,10)).mkString("，");
+      println(_memberId + s"${logType}，成员： 【$members】 ")
+    })*/
   }
 
   private def doJoinGroup(group: GroupMetadata,
@@ -168,9 +173,8 @@ class GroupCoordinator(val brokerId: Int,
                           protocolType: String,
                           protocols: List[(String, Array[Byte])],
                           responseCallback: JoinCallback) {
+    mylog(memberId,"【加入组】",group)
     group.inLock {
-      mylog(memberId,"加入组",group.allMembers.mkString("，"))
-
       if (!group.is(Empty) && (!group.protocolType.contains(protocolType) || !group.supportsProtocols(protocols.map(_._1).toSet))) {
         // if the new member does not support the group protocol, reject it
         responseCallback(joinError(memberId, Errors.INCONSISTENT_GROUP_PROTOCOL))
@@ -245,8 +249,12 @@ class GroupCoordinator(val brokerId: Int,
             }
         }
 
+        //当前group状态是否是“准备再平衡”
         if (group.is(PreparingRebalance))
           joinPurgatory.checkAndComplete(GroupKey(group.groupId))
+
+        val members = group.allMembers.map(s=> s.substring(0,10)).mkString("，");
+        println((if(memberId.isEmpty) "UNKOWN" else memberId.substring(0,10)) + s"： 【加入组】，成员： 【$members】 ")
       }
     }
   }
@@ -273,9 +281,8 @@ class GroupCoordinator(val brokerId: Int,
                           memberId: String,
                           groupAssignment: Map[String, Array[Byte]],
                           responseCallback: SyncCallback) {
+    mylog(memberId,"【同步组】",group)
     group.inLock {
-      mylog(memberId,"同步组",group.allMembers.mkString("，"))
-
       if (!group.has(memberId)) {
         responseCallback(Array.empty, Errors.UNKNOWN_MEMBER_ID)
       } else if (generationId != group.generationId) {
@@ -324,6 +331,9 @@ class GroupCoordinator(val brokerId: Int,
             completeAndScheduleNextHeartbeatExpiration(group, group.get(memberId))
         }
       }
+
+      val members = group.allMembers.map(s=> s.substring(0,10)).mkString("，");
+      println((if(memberId.isEmpty) "UNKOWN" else memberId.substring(0,10)) + s"： 【同步组】，成员： 【$members】 ")
     }
   }
 
@@ -691,7 +701,7 @@ class GroupCoordinator(val brokerId: Int,
     member.awaitingJoinCallback = callback
     maybePrepareRebalance(group)
   }
-
+  //但只有消费组状态为“稳定”或者“等待同步”，才允许调用prepareRebalance方法。 prepareRebalance 方法会先将消费组状态更新为“准备再平衡”，然后开始执行“准备再平衡”操作
   private def maybePrepareRebalance(group: GroupMetadata) {
     group.inLock {
       if (group.canRebalance)
@@ -774,6 +784,7 @@ class GroupCoordinator(val brokerId: Int,
           for (member <- group.allMemberMetadata) {
             assert(member.awaitingJoinCallback != null)
             val joinResult = JoinGroupResult(
+              //只给主consumer发送MemberMetadata数据
               members = if (member.memberId == group.leaderId) {
                 group.currentMemberMetadata
               } else {

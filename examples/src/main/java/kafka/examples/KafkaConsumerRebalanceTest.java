@@ -17,18 +17,18 @@ public class KafkaConsumerRebalanceTest {
     public static void main(String[] args) throws Exception{
         //String topic = KafkaProperties.TOPIC;
         String topic = "topic";
-        Producer producerThread = new Producer(topic, false);
-        producerThread.start();
+       /* Producer producerThread = new Producer(topic, false);
+        producerThread.start();*/
 
         KafkaSubscribeConsumer consumerThread = new KafkaSubscribeConsumer("C1", topic);
         consumerThread.start();
 
-        Thread.sleep(8000);
+        Thread.sleep(2000);
 
         KafkaSubscribeConsumer consumerThread2 = new KafkaSubscribeConsumer("C2", topic);
         consumerThread2.start();
 
-        Thread.sleep(9000);
+        Thread.sleep(2000);
 
         KafkaSubscribeConsumer consumerThread3 = new KafkaSubscribeConsumer("C3", topic);
         //consumerThread3.subscribe(topic);

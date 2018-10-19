@@ -58,7 +58,7 @@ private[group] case object PreparingRebalance extends GroupState { val state: By
 private[group] case object AwaitingSync extends GroupState { val state: Byte = 5}
 
 /**
- * Group is stable
+ * Group is stable(稳定)
  *
  * action: respond to member heartbeats normally
  *         respond to sync group from any member with current assignment
@@ -105,6 +105,7 @@ private[group] case object Empty extends GroupState { val state: Byte = 5 }
 
 
 private object GroupMetadata {
+  //key(当前状态) => value(之前的状态)，判断之前的状态能否转换成当前状态
   private val validPreviousStates: Map[GroupState, Set[GroupState]] =
     Map(Dead -> Set(Stable, PreparingRebalance, AwaitingSync, Empty, Dead),
       AwaitingSync -> Set(PreparingRebalance),
