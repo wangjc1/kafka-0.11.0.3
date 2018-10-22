@@ -81,6 +81,7 @@ class SystemTimer(executorName: String,
   def add(timerTask: TimerTask): Unit = {
     readLock.lock()
     try {
+      //Time.SYSTEM.hiResClockMs将纳秒时间点转换成毫秒时间
       addTimerTaskEntry(new TimerTaskEntry(timerTask, timerTask.delayMs + Time.SYSTEM.hiResClockMs))
     } finally {
       readLock.unlock()

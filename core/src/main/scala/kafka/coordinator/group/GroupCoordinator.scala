@@ -16,6 +16,7 @@
  */
 package kafka.coordinator.group
 
+import java.nio.ByteBuffer
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -24,6 +25,7 @@ import kafka.log.LogConfig
 import kafka.message.ProducerCompressionCodec
 import kafka.server._
 import kafka.utils._
+import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.internals.Topic
 import org.apache.kafka.common.protocol.Errors
@@ -148,22 +150,6 @@ class GroupCoordinator(val brokerId: Int,
     }
   }
 
-  /**
-    *调试日子，查看消费客户端加入组的情况
-    */
-  private def mylog(memberId: String,logType:String,group: GroupMetadata): Unit = {
-    var _memberId = memberId match {
-      case "" => "UNKOWN"
-      case _  =>  memberId.substring(0,10)
-    }
-
-    println(_memberId + s"： 协调者准备开始处理${logType}请求")
-    /*group.inLock({
-      val members = group.allMembers.map(s=> s.substring(0,10)).mkString("，");
-      println(_memberId + s"${logType}，成员： 【$members】 ")
-    })*/
-  }
-
   private def doJoinGroup(group: GroupMetadata,
                           memberId: String,
                           clientId: String,
@@ -173,8 +159,10 @@ class GroupCoordinator(val brokerId: Int,
                           protocolType: String,
                           protocols: List[(String, Array[Byte])],
                           responseCallback: JoinCallback) {
-    mylog(memberId,"【加入组】",group)
+    ToolsUtils.mylog(s"JoinGroup:"+group.currentState,(memberId,10),s"($clientId)准备加入[NoLock]")
+
     group.inLock {
+      ToolsUtils.mylog("JoinGroup:"+group.currentState,(memberId,10),s"($clientId)开始加入[Locked]",group.allMembers.map(s => (s.substring(0,10),"")).toMap)
       if (!group.is(Empty) && (!group.protocolType.contains(protocolType) || !group.supportsProtocols(protocols.map(_._1).toSet))) {
         // if the new member does not support the group protocol, reject it
         responseCallback(joinError(memberId, Errors.INCONSISTENT_GROUP_PROTOCOL))
@@ -252,9 +240,6 @@ class GroupCoordinator(val brokerId: Int,
         //当前group状态是否是“准备再平衡”,检查验收操作是否完成
         if (group.is(PreparingRebalance))
           joinPurgatory.checkAndComplete(GroupKey(group.groupId))
-
-        val members = group.allMembers.map(s=> s.substring(0,10)).mkString("，");
-        println((if(memberId.isEmpty) "UNKOWN" else memberId.substring(0,10)) + s"： 【加入组】，成员： 【$members】 ")
       }
     }
   }
@@ -281,8 +266,9 @@ class GroupCoordinator(val brokerId: Int,
                           memberId: String,
                           groupAssignment: Map[String, Array[Byte]],
                           responseCallback: SyncCallback) {
-    mylog(memberId,"【同步组】",group)
+    ToolsUtils.mylog("SyncGroup:"+group.currentState,(memberId,10),"准备同步[NoLock]")
     group.inLock {
+      ToolsUtils.mylog("SyncGroup:"+group.currentState,(memberId,10),"开始同步[Locked]")
       if (!group.has(memberId)) {
         responseCallback(Array.empty, Errors.UNKNOWN_MEMBER_ID)
       } else if (generationId != group.generationId) {
@@ -291,12 +277,19 @@ class GroupCoordinator(val brokerId: Int,
         group.currentState match {
           case Empty | Dead =>
             responseCallback(Array.empty, Errors.UNKNOWN_MEMBER_ID)
-
+          //参考《Kafka技术内幕》5.3.5 消费组未稳定，原有消费者重新加入消费组
+          //和prepareRebalance()方法里面的判断一样 if (group.is(AwaitingSync)) throw Errors.REBALANCE_IN_PROGRESS
           case PreparingRebalance =>
             responseCallback(Array.empty, Errors.REBALANCE_IN_PROGRESS)
 
           case AwaitingSync =>
             group.get(memberId).awaitingSyncCallback = responseCallback
+
+            if (memberId == group.leaderId){
+              ToolsUtils.mylog("SyncGroup:"+group.currentState,(memberId,10),"Leader In AwaitingSync[Locked]")
+            }else{
+              ToolsUtils.mylog("SyncGroup:"+group.currentState,(memberId,10),"Follow In AwaitingSync[Locked]")
+            }
 
             // if this is the leader, then we can attempt to persist state and transition to stable
             if (memberId == group.leaderId) {
@@ -326,14 +319,16 @@ class GroupCoordinator(val brokerId: Int,
 
           case Stable =>
             // if the group is stable, we just return the current assignment
+            val state = group.currentState
+            val leader = group.leaderId
+
+            ToolsUtils.mylog("SyncGroup:"+group.currentState,(memberId,10),"In Stable[Locked]")
+
             val memberMetadata = group.get(memberId)
             responseCallback(memberMetadata.assignment, Errors.NONE)
             completeAndScheduleNextHeartbeatExpiration(group, group.get(memberId))
         }
       }
-
-      val members = group.allMembers.map(s=> s.substring(0,10)).mkString("，");
-      println((if(memberId.isEmpty) "UNKOWN" else memberId.substring(0,10)) + s"： 【同步组】，成员： 【$members】 ")
     }
   }
 
@@ -625,8 +620,11 @@ class GroupCoordinator(val brokerId: Int,
   private def propagateAssignment(group: GroupMetadata, error: Errors) {
     for (member <- group.allMemberMetadata) {
       if (member.awaitingSyncCallback != null) {
+
         member.awaitingSyncCallback(member.assignment, error)
         member.awaitingSyncCallback = null
+
+        ToolsUtils.mylog("SyncGroup:"+group.currentState,(member.memberId,10),"同步完成[Locked]",Map(ConsumerProtocol.deserializeAssignment(ByteBuffer.wrap(member.assignment)).partitions().toString -> ""))
 
         // reset the session timeout for members after propagating the member's assignment.
         // This is because if any member's session expired while we were still awaiting either
@@ -653,6 +651,11 @@ class GroupCoordinator(val brokerId: Int,
 
   /**
    * Complete existing DelayedHeartbeats for the given member and schedule the next one
+    * 一般当给消费端发送响应后调用，确定消费端是否还活着：
+    * (1）状态为“等待同步”，在发送JoinGroup响应调用。
+    * (2）状态为“稳定” ，在发送“同步组响应”给消费者后调用。
+    * (3）状态为“等待同步”，收到主消费者的“同步组请求”，给每个消费者发送 “ 同步组响应”后
+    * 调用。
    */
   private def completeAndScheduleNextHeartbeatExpiration(group: GroupMetadata, member: MemberMetadata) {
     // complete current heartbeat expectation
@@ -704,6 +707,7 @@ class GroupCoordinator(val brokerId: Int,
   //但只有消费组状态为“稳定”或者“等待同步”，才允许调用prepareRebalance方法。 prepareRebalance 方法会先将消费组状态更新为“准备再平衡”，然后开始执行“准备再平衡”操作
   private def maybePrepareRebalance(group: GroupMetadata) {
     group.inLock {
+      ToolsUtils.mylog("JoinGroup:"+group.currentState,("",0),"Call maybePrepareRebalance():group.canRebalance="+group.canRebalance)
       if (group.canRebalance)
         prepareRebalance(group)
     }
@@ -711,6 +715,7 @@ class GroupCoordinator(val brokerId: Int,
 
   private def prepareRebalance(group: GroupMetadata) {
     // if any members are awaiting sync, cancel their request and have them rejoin
+    // 和doSyncGroup() 方法里的触发的条件一样 case PreparingRebalance =>
     if (group.is(AwaitingSync))
       resetAndPropagateAssignmentError(group, Errors.REBALANCE_IN_PROGRESS)
 
@@ -726,6 +731,7 @@ class GroupCoordinator(val brokerId: Int,
 
     group.transitionTo(PreparingRebalance)
 
+    ToolsUtils.mylog("JoinGroup:"+group.currentState,("",0),"Call prepareRebalance()")
     info(s"Preparing to rebalance group ${group.groupId} with old generation ${group.generationId} " +
       s"(${Topic.GROUP_METADATA_TOPIC_NAME}-${partitionFor(group.groupId)})")
 
@@ -756,6 +762,8 @@ class GroupCoordinator(val brokerId: Int,
 
   def onCompleteJoin(group: GroupMetadata) {
     group.inLock {
+      ToolsUtils.mylog("JoinGroup:"+group.currentState,("",10),"执行CompleteJoin()延时任务",group.allMembers.map(s => (s.substring(0,10),"")).toMap)
+
       // remove any members who haven't joined the group yet
       group.notYetRejoinedMembers.foreach { failedMember =>
         group.remove(failedMember.memberId)
@@ -763,6 +771,7 @@ class GroupCoordinator(val brokerId: Int,
       }
 
       if (!group.is(Dead)) {
+        //如果members不为空，则更新group.state=AwaitingSync；如果members为空则更新group.state=Empty
         group.initNextGeneration()
         if (group.is(Empty)) {
           info(s"Group ${group.groupId} with generation ${group.generationId} is now empty " +
@@ -798,6 +807,8 @@ class GroupCoordinator(val brokerId: Int,
 
             member.awaitingJoinCallback(joinResult)
             member.awaitingJoinCallback = null
+
+            ToolsUtils.mylog("JoinGroup:"+group.currentState,(member.memberId,10),"加入成功",for((k,v) <- joinResult.members) yield (k.substring(0,10),if (k == group.leaderId) "主" else "从"))
             completeAndScheduleNextHeartbeatExpiration(group, member)
           }
         }
@@ -831,6 +842,7 @@ class GroupCoordinator(val brokerId: Int,
   private def shouldKeepMemberAlive(member: MemberMetadata, heartbeatDeadline: Long) =
     member.awaitingJoinCallback != null ||
       member.awaitingSyncCallback != null ||
+      //消费者成员最近的心跳时间加上会话超时时间大于下一次心跳的截止时间，说明下一次心跳还没开始发
       member.latestHeartbeat + member.sessionTimeoutMs > heartbeatDeadline
 
   private def isCoordinatorForGroup(groupId: String) = groupManager.isGroupLocal(groupId)

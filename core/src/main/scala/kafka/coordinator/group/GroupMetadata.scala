@@ -221,7 +221,7 @@ private[group] class GroupMetadata(val groupId: String, initialState: GroupState
 
   // TODO: decide if ids should be predictable or random
   def generateMemberIdSuffix = UUID.randomUUID().toString
-
+  //validPreviousStates是一个Map，PreparingRebalance是一个Key
   def canRebalance = GroupMetadata.validPreviousStates(PreparingRebalance).contains(state)
 
   def transitionTo(groupState: GroupState) {

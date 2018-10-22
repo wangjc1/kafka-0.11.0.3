@@ -24,6 +24,7 @@ import org.apache.kafka.common.{Metric, MetricName}
 
 import scala.collection.immutable.ListMap
 import scala.collection.mutable
+import scala.collection.Map
 
 object ToolsUtils {
 
@@ -64,5 +65,16 @@ object ToolsUtils {
       case (metricName, value) =>
         println(s"%-${maxLengthOfDisplayName}s : %.3f".format(metricName, value))
     }
+  }
+
+  def mylog(s:String): Unit ={
+    println("["+Thread.currentThread().getName+"] "+s)
+  }
+
+  def mylog(logType:String,who:(String,Int),op:String,params:Map[String,Any]=Map.empty): Unit ={
+    val (name,len) = who
+    val _name =  (if(name.isEmpty) "UNKOWN" else name.substring(0,len)).mkString("[","","]")
+    val _type =  logType.mkString("[","","]")
+    mylog(_name + " " + _type + " " + op + " " + (if(!params.isEmpty) params.toString() else ""))
   }
 }

@@ -840,6 +840,6 @@ public class Utils {
 
     public static void println(String s,String... params){
         if(s==null || s.length()==0) return ;
-        System.out.println(String.format(s,params));
+        System.out.println("["+Thread.currentThread().getName()+"] "+String.format(s,params));
     }
 }

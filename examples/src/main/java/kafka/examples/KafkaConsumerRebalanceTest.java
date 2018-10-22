@@ -23,12 +23,12 @@ public class KafkaConsumerRebalanceTest {
         KafkaSubscribeConsumer consumerThread = new KafkaSubscribeConsumer("C1", topic);
         consumerThread.start();
 
-        Thread.sleep(2000);
+        Thread.sleep(1000);
 
         KafkaSubscribeConsumer consumerThread2 = new KafkaSubscribeConsumer("C2", topic);
         consumerThread2.start();
 
-        Thread.sleep(2000);
+        Thread.sleep(1000);
 
         KafkaSubscribeConsumer consumerThread3 = new KafkaSubscribeConsumer("C3", topic);
         //consumerThread3.subscribe(topic);
@@ -58,6 +58,8 @@ class KafkaSubscribeConsumer extends ShutdownableThread {
         props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.IntegerDeserializer");
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "20000");
 
         consumer = new KafkaConsumer<>(props);
         this.name = name;
