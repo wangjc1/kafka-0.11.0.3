@@ -48,6 +48,7 @@ import scala.math._
  * @param baseOffset A lower bound on the offsets in this segment
  * @param indexIntervalBytes The approximate number of bytes between entries in the index
  * @param time The time instance
+  参考： https://www.jianshu.com/p/3e54a5a39683
  */
 @nonthreadsafe
 class LogSegment(val log: FileRecords,
