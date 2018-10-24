@@ -100,15 +100,21 @@ class Producer extends Thread {
         props.put("client.id", "DemoProducer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+
+        //props.put("batch.size", 256);
+
         producer = new KafkaProducer<>(props);
         this.topic = topic;
         this.isAsync = isAsync;
     }
 
-    public static void main(String[] args) {
-        boolean isAsync = args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
+    public static void main(String[] args) throws Exception {
+        boolean isAsync = true;//args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
         Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
         producerThread.start();
+
+        //
+        Thread.sleep(10000);
     }
 
 
@@ -121,7 +127,6 @@ class Producer extends Thread {
                 producer.send(new ProducerRecord<>(topic,
                         messageNo,
                         messageStr), new DemoCallBack(startTime, messageNo, messageStr));
-                System.out.println("Sent message: (" + messageNo + ", " + messageStr + ")");
             } else { // Send synchronously
                 try {
                     producer.send(new ProducerRecord<>(topic,
@@ -133,7 +138,7 @@ class Producer extends Thread {
                 }
             }
             ++messageNo;
-            if(messageNo>10) break;
+            if(messageNo>2) break;
         }
     }
 
