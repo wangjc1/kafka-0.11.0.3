@@ -92,6 +92,14 @@ import static org.apache.kafka.common.record.Records.LOG_OVERHEAD;
  *  -------------------------------------------------------------------------------------------------
  *  | Unused (6-15) | Control (5) | Transactional (4) | Timestamp Type (3) | Compression Type (0-2) |
  *  -------------------------------------------------------------------------------------------------
+ *  这个类专门用来解析RecordBatch数据格式的
+ *  ByteBuffer buf = ByteBuffer.allocate(32);
+ *  buf.putChar(aChar);
+ *  buf.putByte(aBtyte);
+ *  buf.putInt(aInt);
+ *
+ *  现在要读取Int值,则从第3个字节开始读，前面Char占2个，Byte占1个
+ *  buf.get(2+1)
  */
 public class DefaultRecordBatch extends AbstractRecordBatch implements MutableRecordBatch {
     static final int BASE_OFFSET_OFFSET = 0;

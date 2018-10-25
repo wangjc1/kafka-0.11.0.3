@@ -47,10 +47,18 @@ import kafka.common.InvalidOffsetException
  * 
  * All external APIs translate from relative offsets to full offsets, so users of this class do not interact with the internal 
  * storage format.
+  参考：https://blog.csdn.net/zhanglh046/article/details/72821734
+  file: 指向磁盘上的索引文件
+  baseOffset: 对应日志文件第一个消息的offset
+  mmap: 用来操作索引文件的MappedByteBuffer
+  lock: ReentrantLock对象，在mmap进行操作的时候需要加锁保护
+  _entries:当前索引文件索引项的个数
+  _maxEntries: 当前索引文件中最多能够保存索引项个数
+  _lastOffset: 保存最后一个索引项的offset
  */
 class OffsetIndex(file: File, baseOffset: Long, maxIndexSize: Int = -1, writable: Boolean = true)
     extends AbstractIndex[Long, Int](file, baseOffset, maxIndexSize, writable) {
-
+  //每一个索引项为8字节，其中相对offset占用4字节，消息的物理地址(position)占用4个字节
   override def entrySize = 8
   
   /* the last offset in the index */
@@ -186,6 +194,7 @@ class OffsetIndex(file: File, baseOffset: Long, maxIndexSize: Int = -1, writable
   }
 
   override def sanityCheck() {
+    //if(file.)
     require(_entries == 0 || _lastOffset > baseOffset,
             s"Corrupt index found, index file (${file.getAbsolutePath}) has non-zero size but the last offset " +
                 s"is ${_lastOffset} which is no larger than the base offset $baseOffset.")

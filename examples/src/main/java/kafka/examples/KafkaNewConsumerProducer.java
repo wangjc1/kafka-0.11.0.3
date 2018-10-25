@@ -101,7 +101,7 @@ class Producer extends Thread {
         props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
-        //props.put("batch.size", 256);
+        props.put("batch.size", 1024);
 
         producer = new KafkaProducer<>(props);
         this.topic = topic;
@@ -119,7 +119,7 @@ class Producer extends Thread {
 
 
     public void run() {
-        int messageNo = 1;
+        int messageNo =1;
         while (true) {
             String messageStr = "Message_" + messageNo;
             long startTime = System.currentTimeMillis();
@@ -138,7 +138,7 @@ class Producer extends Thread {
                 }
             }
             ++messageNo;
-            if(messageNo>2) break;
+            if(messageNo>10) break;
         }
     }
 

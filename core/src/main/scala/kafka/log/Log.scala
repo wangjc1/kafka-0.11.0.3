@@ -573,6 +573,7 @@ class Log(@volatile var dir: File,
    * @return Information about the appended messages including the first and last offset.
    */
   private def append(records: MemoryRecords, isFromClient: Boolean, assignOffsets: Boolean, leaderEpoch: Int): LogAppendInfo = {
+    //LogAppendinfo对象，代表这批消息的概要信息。 然后对消息集进行验证
     val appendInfo = analyzeAndValidateRecords(records, isFromClient = isFromClient)
 
     // return if we have no valid messages or if this is a duplicate of the last appended entry
@@ -659,7 +660,7 @@ class Log(@volatile var dir: File,
         val segment = maybeRoll(messagesSize = validRecords.sizeInBytes,
           maxTimestampInMessages = appendInfo.maxTimestamp,
           maxOffsetInMessages = appendInfo.lastOffset)
-
+        // 下一个偏移量元数据,它的数据都是从当前活动的日志分段获取的
         val logOffsetMetadata = LogOffsetMetadata(
           messageOffset = appendInfo.firstOffset,
           segmentBaseOffset = segment.baseOffset,
@@ -1434,6 +1435,7 @@ class Log(@volatile var dir: File,
 
   /**
    * The active segment that is currently taking appends
+    * 它会获取segments的最后一个元素，作为日志最新的活动分段。 如果有新日志分段产生，就会被加入到segments的最后一个
    */
   def activeSegment = segments.lastEntry.getValue
 

@@ -41,6 +41,8 @@ import scala.collection._
  * size or I/O rate.
  * 
  * A background thread handles log retention by periodically truncating excess log segments.
+  * 
+  参考：《Kafka源码解析和实践》4.3
  */
 @threadsafe
 class LogManager(val logDirs: Array[File],

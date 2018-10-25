@@ -55,7 +55,7 @@ class LogSegment(val log: FileRecords,
                  val index: OffsetIndex,
                  val timeIndex: TimeIndex,
                  val txnIndex: TransactionIndex,
-                 val baseOffset: Long,
+                 val baseOffset: Long,//日志分段的“基准偏移盘”一般不会变化，除非“当前日志分段”发生变化
                  val indexIntervalBytes: Int,
                  val rollJitterMs: Long,
                  time: Time) extends Logging {

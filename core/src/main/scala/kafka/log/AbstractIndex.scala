@@ -44,6 +44,10 @@ abstract class AbstractIndex[K, V](@volatile var file: File, val baseOffset: Lon
 
   protected val lock = new ReentrantLock
 
+  /**
+    * NIO中的FileChannel.map()方法其实就是采用了操作系统中的内存映射方式，将内核缓冲区的内存和用户缓冲区的内存做了一个地址映射。
+    * 参考：https://blog.csdn.net/cringkong/article/details/80274148
+    */
   @volatile
   protected var mmap: MappedByteBuffer = {
     val newlyCreated = file.createNewFile()
