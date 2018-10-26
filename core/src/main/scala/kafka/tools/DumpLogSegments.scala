@@ -183,13 +183,13 @@ object DumpLogSegments {
 
     for(i <- 0 until index.entries) {
       val entry = index.entry(i)
-     /* val slice = fileRecords.read(entry.position, maxMessageSize)
+      val slice = fileRecords.read(entry.position, maxMessageSize)
       val firstRecord = slice.records.iterator.next()
       if (firstRecord.offset != entry.offset + index.baseOffset) {
         var misMatchesSeq = misMatchesForIndexFilesMap.getOrElse(file.getAbsolutePath, List[(Long, Long)]())
         misMatchesSeq ::=(entry.offset + index.baseOffset, firstRecord.offset)
         misMatchesForIndexFilesMap.put(file.getAbsolutePath, misMatchesSeq)
-      }*/
+      }
       // since it is a sparse file, in the event of a crash there may be many zero entries, stop if we see one
       if(entry.offset == 0 && i > 0)
         return
