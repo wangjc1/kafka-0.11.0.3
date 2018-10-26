@@ -101,7 +101,7 @@ class Producer extends Thread {
         props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
-        props.put("batch.size", 1024);
+        props.put("batch.size", 128);
 
         producer = new KafkaProducer<>(props);
         this.topic = topic;
@@ -109,12 +109,11 @@ class Producer extends Thread {
     }
 
     public static void main(String[] args) throws Exception {
-        boolean isAsync = true;//args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
+        boolean isAsync = false;//args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
         Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
         producerThread.start();
 
-        //
-        Thread.sleep(10000);
+        Thread.sleep(2000);
     }
 
 

@@ -152,7 +152,7 @@ class Log(@volatile var dir: File,
     else
       0
   }
-
+  //最后偏移量加1，这样下一条记录可以直接使用而不用再加1了
   @volatile private var nextOffsetMetadata: LogOffsetMetadata = _
 
   /* The earliest offset which is part of an incomplete transaction. This is used to compute the
