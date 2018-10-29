@@ -102,6 +102,7 @@ private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, ta
   private[this] val interval = tickMs * wheelSize
   private[this] val buckets = Array.tabulate[TimerTaskList](wheelSize) { _ => new TimerTaskList(taskCounter) }
 
+  //转换成当前时间轮单位(tickMs)整数倍的一个数
   private[this] var currentTime = startMs - (startMs % tickMs) // rounding down to multiple of tickMs
 
   // overflowWheel can potentially be updated and read by two concurrent threads through add().
@@ -133,16 +134,20 @@ private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, ta
     if (timerTaskEntry.cancelled) {
       // Cancelled
       false
-    } else if (expiration < currentTime + tickMs) {
+    } else if (expiration < currentTime + tickMs) {//bucket任务超时，放到超时线程执行
       // Already expired
       false
-    } else if (expiration < currentTime + interval) {
+    } else if (expiration < currentTime + interval) {//还没超时，放到时间轮中滚动
       // Put in its own bucket
+      //计算超时时间是时间轮单位(tickMs)多少倍
       val virtualId = expiration / tickMs
+      //以表为例每小时60分钟，假设时间从0点开始，expiration是200分钟,那么virtualId= 200/60 = 3
+      //上面只是计算出等于3，但落在时间轮的那个位置不知道，假设划分成wheelSize=12个单元，那么就把任务放到3号筒中
       val bucket = buckets((virtualId % wheelSize.toLong).toInt)
       bucket.add(timerTaskEntry)
 
       // Set the bucket expiration time
+      // 还是以上面为例，假设落到时间轮的3号单元位置，那么这个筒的超时时间3*tickMs
       if (bucket.setExpiration(virtualId * tickMs)) {
         // The bucket needs to be enqueued because it was an expired bucket
         // We only need to enqueue the bucket when its expiration time has changed, i.e. the wheel has advanced
