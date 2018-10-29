@@ -55,6 +55,7 @@ trait Timer {
 class SystemTimer(executorName: String,
                   tickMs: Long = 1,
                   wheelSize: Int = 20,
+                  //startMs = System.nanoTime() 只是一个时间点，不代表具体的时间，代表计时器启动的时间
                   startMs: Long = Time.SYSTEM.hiResClockMs) extends Timer {
 
   // timeout timer
@@ -89,6 +90,7 @@ class SystemTimer(executorName: String,
   }
 
   private def addTimerTaskEntry(timerTaskEntry: TimerTaskEntry): Unit = {
+    //当延时任务加不到时间轮(timingWheel)里就说明过期了，就放到taskExecutor线程池中执行
     if (!timingWheel.add(timerTaskEntry)) {
       // Already expired or cancelled
       if (!timerTaskEntry.cancelled)
@@ -96,11 +98,13 @@ class SystemTimer(executorName: String,
     }
   }
 
+  //将延时任务重新加入到时间轮中
   private[this] val reinsert = (timerTaskEntry: TimerTaskEntry) => addTimerTaskEntry(timerTaskEntry)
 
   /*
    * Advances the clock if there is an expired bucket. If there isn't any expired bucket when called,
    * waits up to timeoutMs before giving up.
+   * 弹出超时的定时任务列表，将时间轮的时钟往前移动，并将定时任务重新加入到时间轮中
    */
   def advanceClock(timeoutMs: Long): Boolean = {
     var bucket = delayQueue.poll(timeoutMs, TimeUnit.MILLISECONDS)
