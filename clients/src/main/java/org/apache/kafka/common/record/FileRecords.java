@@ -260,8 +260,10 @@ public class FileRecords extends AbstractRecords implements Closeable {
         final long bytesTransferred;
         if (destChannel instanceof TransportLayer) {
             TransportLayer tl = (TransportLayer) destChannel;
+            //从文件channel中读取数据
             bytesTransferred = tl.transferFrom(channel, position, count);
         } else {
+            //将文件channel中的数据传输到destChannel上
             bytesTransferred = channel.transferTo(position, count, destChannel);
         }
         return bytesTransferred;

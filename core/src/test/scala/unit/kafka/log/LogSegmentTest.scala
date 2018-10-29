@@ -94,7 +94,7 @@ class LogSegmentTest {
     val seg = createSegment(40)
     val ms = records(50, "hello", "there", "little", "bee")
     seg.append(50, 53, RecordBatch.NO_TIMESTAMP, -1L, ms)
-    val read = seg.read(startOffset = 41, maxSize = 300, maxOffset = None).records
+    val read = seg.read(startOffset = 41, maxSize = 200, maxOffset = None).records
     checkEquals(ms.records.iterator, read.records.iterator)
   }
 

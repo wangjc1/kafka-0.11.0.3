@@ -87,7 +87,7 @@ public class MemoryRecords extends AbstractRecords {
     public int writeFullyTo(GatheringByteChannel channel) throws IOException {
         buffer.mark();
         int written = 0;
-        while (written < sizeInBytes())
+        while (written < sizeInBytes()) //written < buffer.limit
             written += channel.write(buffer);
         buffer.reset();
         return written;

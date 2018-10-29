@@ -73,7 +73,7 @@ class DelayedOperationTest {
 
   @Test
   def testRequestExpiry() {
-    val expiration = 5000L
+    val expiration = 10000L
     val start = Time.SYSTEM.hiResClockMs
     val r1 = new MockDelayedOperation(expiration)
     //val r2 = new MockDelayedOperation(5000L)

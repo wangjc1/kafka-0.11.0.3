@@ -915,7 +915,7 @@ class Log(@volatile var dir: File,
       return FetchDataInfo(currentNextOffsetMetadata, MemoryRecords.EMPTY, firstEntryIncomplete = false,
         abortedTransactions = abortedTransactions)
     }
-
+    //方法lowerEntry、floorEntry、ceilingEntry和higherEntry分别返回与小于、小于等于、大于等于、大于给定键的键关联的Map.Entry对象
     var segmentEntry = segments.floorEntry(startOffset)
 
     // return error on attempt to read beyond the log end offset or read below log start offset
@@ -947,6 +947,7 @@ class Log(@volatile var dir: File,
       }
       val fetchInfo = segment.read(startOffset, maxOffset, maxLength, maxPosition, minOneMessage)
       if (fetchInfo == null) {
+        // 返回位于segmentEntry.getKey后一位的键值对，如果为空，则返回null。
         segmentEntry = segments.higherEntry(segmentEntry.getKey)
       } else {
         return isolationLevel match {

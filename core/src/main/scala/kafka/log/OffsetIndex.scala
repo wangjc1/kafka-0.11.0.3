@@ -92,6 +92,9 @@ class OffsetIndex(file: File, baseOffset: Long, maxIndexSize: Int = -1, writable
    */
   def lookup(targetOffset: Long): OffsetPosition = {
     maybeLock(lock) {
+      //下面我们先来分析查询索引文件的过程。 索引文件用内存映射（mmap）的方式加载到内存中。 由
+      //于在查询的过程中，可能会有新的索引条目添加到索引文件， 导致内存映射发生变化， 因此要先复制
+      //出一个字节缓冲区（idx）然后在这个字节缓冲区上查询， 不需要和底层索引文件发生磁盘读取的操
       val idx = mmap.duplicate
       val slot = largestLowerBoundSlotFor(idx, targetOffset, IndexSearchType.KEY)
       if(slot == -1)
@@ -117,8 +120,10 @@ class OffsetIndex(file: File, baseOffset: Long, maxIndexSize: Int = -1, writable
     }
   }
 
+  //获取索引 ；文件第n个索与｜条目的相对偏移量值
   private def relativeOffset(buffer: ByteBuffer, n: Int): Int = buffer.getInt(n * entrySize)
 
+  //获取索与｜丈件第n个索号｜条目的物理位盖住
   private def physical(buffer: ByteBuffer, n: Int): Int = buffer.getInt(n * entrySize + 4)
 
   override def parseEntry(buffer: ByteBuffer, n: Int): IndexEntry = {

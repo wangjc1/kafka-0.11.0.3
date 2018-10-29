@@ -75,6 +75,7 @@ class LogManager(val logDirs: Array[File],
   loadLogs()
 
   // public, so we can access this from kafka.admin.DeleteTopicTest
+  // 这里cleaner类指的是日志压缩，并不会彻底清理所有日志
   val cleaner: LogCleaner =
     if(cleanerConfig.enableCleaner)
       new LogCleaner(cleanerConfig, logDirs, logs, time = time)

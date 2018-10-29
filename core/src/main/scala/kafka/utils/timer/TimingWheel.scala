@@ -122,6 +122,11 @@ private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, ta
     }
   }
 
+  /**
+    * 把任务增加到bucket中，
+    * @param timerTaskEntry
+    * @return
+    */
   def add(timerTaskEntry: TimerTaskEntry): Boolean = {
     val expiration = timerTaskEntry.expirationMs
 
@@ -149,6 +154,7 @@ private[timer] class TimingWheel(tickMs: Long, wheelSize: Int, startMs: Long, ta
       true
     } else {
       // Out of the interval. Put it into the parent timer
+      // 递归调用add()方法，因为 @volatile private[this] overflowWheel 所以每次调用addOverflowWheel()方法后，成为一个新的对象，overflowWheel会被重置
       if (overflowWheel == null) addOverflowWheel()
       overflowWheel.add(timerTaskEntry)
     }

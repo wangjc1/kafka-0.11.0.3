@@ -120,6 +120,7 @@ class LogSegment(val log: FileRecords,
         rollingBasedTimestamp = Some(largestTimestamp)
       // append the messages
       require(canConvertToRelativeOffset(largestOffset), "largest offset in message set can not be safely converted to relative offset.")
+      //追加一批消息到log文件中，并累计追加的size(size.getAndAdd(written))
       val appendedBytes = log.append(records)
       trace(s"Appended $appendedBytes to ${log.file()} at offset $firstOffset")
       // Update the in memory max timestamp and corresponding offset.
@@ -197,6 +198,7 @@ class LogSegment(val log: FileRecords,
       throw new IllegalArgumentException("Invalid max size for log read (%d)".format(maxSize))
 
     val logSize = log.sizeInBytes // this may change, need to save a consistent copy
+    //通过偏移量获取到position，从索引文件中查找偏移量对应的position，找不到去log里面查找
     val startOffsetAndSize = translateOffset(startOffset)
 
     // if the start position is already off the end of the log, return null

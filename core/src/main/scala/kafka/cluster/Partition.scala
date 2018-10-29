@@ -485,6 +485,7 @@ class Partition(val topic: String,
 
           val info = log.appendAsLeader(records, leaderEpoch = this.leaderEpoch, isFromClient)
           // probably unblock some follower fetch requests since log end offset has been updated
+          // 尝试完成延迟的拉取请求
           replicaManager.tryCompleteDelayedFetch(TopicPartitionOperationKey(this.topic, this.partitionId))
           // we may need to increment high watermark since ISR could be down to 1
           (info, maybeIncrementLeaderHW(leaderReplica))
@@ -496,6 +497,7 @@ class Partition(val topic: String,
     }
 
     // some delayed operations may be unblocked after HW changed
+    // 尝试完成当前分区的延迟请求
     if (leaderHWIncremented)
       tryCompleteDelayedRequests()
 

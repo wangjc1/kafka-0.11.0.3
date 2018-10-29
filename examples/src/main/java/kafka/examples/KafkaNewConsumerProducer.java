@@ -100,8 +100,15 @@ class Producer extends Thread {
         props.put("client.id", "DemoProducer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-
-        props.put("batch.size", 128);
+        // batch.size是producer批量发送的基本单位，默认是16384Bytes，即16kB；
+        // lingger.ms是sender线程在检查batch是否ready时候，判断有没有过期的参数，默认大小是0ms。
+        // 那么producer是按照batch.size大小批量发送消息呢，还是按照linger.ms的时间间隔批量发送消息呢？
+        // 这里先说结论：其实满足batch.size和ling.ms之一，producer便开始发送消息。
+        props.put("batch.size", 1024);
+        //0. 生产者不会等待服务端的任何应答。
+        //1. 生产者会等待主副本收到一个应答后，认为生产请求完成了
+        //-1. 示生产者发送生产请求后，“所有处于同步的备份副本(ISR)都向主副本发送了应答之后，生产请求才算完成
+        props.put("request.required.acks", "0");
 
         producer = new KafkaProducer<>(props);
         this.topic = topic;
@@ -109,7 +116,7 @@ class Producer extends Thread {
     }
 
     public static void main(String[] args) throws Exception {
-        boolean isAsync = false;//args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
+        boolean isAsync = true;//args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
         Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
         producerThread.start();
 
