@@ -113,6 +113,8 @@ class SystemTimer(executorName: String,
       try {
         while (bucket != null) {
           timingWheel.advanceClock(bucket.getExpiration())
+          //遍历bucket(TimerTaskList)中所有的延时任务，调用addTimerTaskEntry()方法把head元素再次尝试加入到时间轮中
+          //这里再次加入的目的是当再次调用timingWheel.add(timerTaskEntry)方法时，如果返回false说明超时时间已经到了，就可以分批线程执行了
           bucket.flush(reinsert)
           bucket = delayQueue.poll()
         }
