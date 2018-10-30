@@ -370,6 +370,7 @@ final class DelayedOperationPurgatory[T <: DelayedOperation](purgatoryName: Stri
     }
 
     // traverse the list and purge elements that are already completed by others
+    // 清除已经完成的任务
     def purgeCompleted(): Int = {
       var purged = 0
 
