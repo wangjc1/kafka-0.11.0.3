@@ -40,6 +40,13 @@ import org.apache.zookeeper.Watcher.Event.KeeperState
 import scala.collection._
 import scala.util.Try
 
+/**
+  * 控制器在初始化上下文对象时，除了读取ZK的主题和分区数据，还会初始化下面几种类型的数据。
+  * 1. 初始化控制器的通道管理器，建立到集群各个代理节点的网络连接。
+  * 2. 初始化“选举最优副本作为主副本” “重新分配分区” “删除主题的管理器”
+  *
+  * @param zkUtils
+  */
 class ControllerContext(val zkUtils: ZkUtils) {
   val stats = new ControllerStats
 
@@ -146,6 +153,13 @@ object KafkaController extends Logging {
   }
 }
 
+/**
+  *
+  * 控制器在处理分区、主题、代理节点的更改事件时，分别调用了不同的处理方法。
+  * + 为已有的主题新创建分区，调用onNewPatitionCreation 方法。
+  * + 新创建一个不存在的主题，调用调用onNewTopicCreation 方法。
+  * + 代理节点上线或下线，调用onBrokerStartup或onBrokerFailure 方法。
+  */
 class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, metrics: Metrics, threadNamePrefix: Option[String] = None) extends Logging with KafkaMetricsGroup {
   this.logIdent = "[Controller " + config.brokerId + "]: "
   private val stateChangeLogger = KafkaController.stateChangeLogger
@@ -161,6 +175,16 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
   private[controller] val eventManager = new ControllerEventManager(controllerContext.stats.rateAndTimeMetrics,
     _ => updateMetrics())
 
+  /**
+    如果分区当前处于“上线状态”或“下线状态”，要转变为“上线状态”，说明需要重新选举分区
+    的主副本。 分区当前为“下线状态”表示： 分区有主副本，但是主副本挂掉了。 分区当前为“上线状
+    态”表示： 分区有主副本，虽然主副本还存活，但是控制器要选举其他的副本作为分区的主副本。 分
+    区的主副本选举接口，在不同的场景下对应了下面几种实现类。
+    口 OfflinePartitionLeaderSelector。主副本不可用后，选举主副本。
+    口 ReassignedPartitionLeaderSelector。重新分配分区时，选举主副本。
+    口 PreferredReplicaPartitionLeaderSelector 。使用最优的副本作为主副本。
+    口 ControlledShutdownLeaderSelector。代理节点挂掉后，重新选举主副本。
+  */
   val topicDeletionManager = new TopicDeletionManager(this, eventManager)
   val offlinePartitionSelector = new OfflinePartitionLeaderSelector(controllerContext, config)
   private val reassignedPartitionLeaderSelector = new ReassignedPartitionLeaderSelector(controllerContext)

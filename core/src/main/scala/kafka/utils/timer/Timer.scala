@@ -112,6 +112,7 @@ class SystemTimer(executorName: String,
       writeLock.lock()
       try {
         while (bucket != null) {
+          //把当前过期的butket过期时间点，作为当前时间来推进时间轮
           timingWheel.advanceClock(bucket.getExpiration())
           //遍历bucket(TimerTaskList)中所有的延时任务，调用addTimerTaskEntry()方法把head元素再次尝试加入到时间轮中
           //这里再次加入的目的是当再次调用timingWheel.add(timerTaskEntry)方法时，如果返回false说明超时时间已经到了，就可以分批线程执行了

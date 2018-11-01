@@ -26,6 +26,13 @@ import org.I0Itec.zkclient.exception.ZkNodeExistsException
 import scala.collection._
 
 /**
+  状态机一般用在事件处理中，并且事件会有多种状态。 当事件的状态发生变化时，会触发对应的
+  事件处理动作。 Kafka控制器启动状态机时有下面两个特点。
+  +  因为分区状态机和副本状态机需要分别获取集群的所有分区和所有副本，而初始化控制器上
+    下文会从ZK读取集群的所有分区与副本，所以初始化控制器上下文后，才能启动状态机。
+  + 因为分区包含了多个副本， 只有集群中所有副本的状态都初始化完毕，才可以初始化分区的
+    状态。 所以控制器会先启动副本状态机，然后才启动分区状态机。
+
  * This class represents the state machine for partitions. It defines the states that a partition can be in, and
  * transitions to move the partition to another legal state. The different states that a partition can be in are -
  * 1. NonExistentPartition: This state indicates that the partition was either never created or was created and then

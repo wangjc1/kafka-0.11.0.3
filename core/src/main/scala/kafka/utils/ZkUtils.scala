@@ -407,10 +407,15 @@ class ZkUtils(val zkClient: ZkClient,
 
   private def registerBrokerInZk(brokerIdPath: String, brokerInfo: String) {
     try {
+      //fix bug:A broker is already registered on the path /brokers/ids/0
+      if (zkClient.exists(brokerIdPath)){
+        deletePath(brokerIdPath)
+      }
+
       val zkCheckedEphemeral = new ZKCheckedEphemeral(brokerIdPath,
-                                                      brokerInfo,
-                                                      zkConnection.getZookeeper,
-                                                      isSecure)
+        brokerInfo,
+        zkConnection.getZookeeper,
+        isSecure)
       zkCheckedEphemeral.create()
     } catch {
       case _: ZkNodeExistsException =>

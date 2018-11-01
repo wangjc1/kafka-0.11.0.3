@@ -295,7 +295,7 @@ class Log(@volatile var dir: File,
 
         val indexFileExists = indexFile.exists()
         val timeIndexFileExists = timeIndexFile.exists()
-        val segment = new LogSegment(dir = dir,
+        var segment = new LogSegment(dir = dir,
           startOffset = startOffset,
           indexIntervalBytes = config.indexInterval,
           maxIndexSize = config.maxIndexSize,
@@ -315,9 +315,22 @@ class Log(@volatile var dir: File,
             case e: java.lang.IllegalArgumentException =>
               warn(s"Found a corrupted index file due to ${e.getMessage}}. deleting ${timeIndexFile.getAbsolutePath}, " +
                 s"${indexFile.getAbsolutePath}, and ${txnIndexFile.getAbsolutePath} and rebuilding index...")
-              Files.deleteIfExists(timeIndexFile.toPath)
-              Files.delete(indexFile.toPath)
+
+              //fix bug: 000000000000000000xx.timeindex: 另一个程序正在使用此文件，进程无法访问
+              segment.timeIndex.delete()
+              //Files.deleteIfExists(timeIndexFile.toPath)
+              segment.index.delete()
+              //Files.delete(indexFile.toPath)
               segment.txnIndex.delete()
+
+              //fix bug:NullPointException
+              segment = new LogSegment(dir = dir,
+                startOffset = startOffset,
+                indexIntervalBytes = config.indexInterval,
+                maxIndexSize = config.maxIndexSize,
+                rollJitterMs = config.randomSegmentJitter,
+                time = time,
+                fileAlreadyExists = true)
               recoverSegment(segment)
           }
         } else {
