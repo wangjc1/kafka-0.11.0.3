@@ -282,6 +282,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     registerBrokerChangeListener()
 
     initializeControllerContext()
+    //获取要删除的主题
     val (topicsToBeDeleted, topicsIneligibleForDeletion) = fetchTopicDeletionsInProgress()
     topicDeletionManager.init(topicsToBeDeleted, topicsIneligibleForDeletion)
 
@@ -291,6 +292,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     // partitionStateMachine.startup().
     sendUpdateMetadataRequest(controllerContext.liveOrShuttingDownBrokerIds.toSeq)
 
+    //因为分区包含了多个副本， 只有集群中所有副本的状态都初始化完毕，才可以初始化分区的状态,所以控制器会先启动副本状态机，然后才启动分区状态机
     replicaStateMachine.startup()
     partitionStateMachine.startup()
 
@@ -678,13 +680,20 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     // update controller cache with delete topic information
     controllerContext.liveBrokers = zkUtils.getAllBrokersInCluster().toSet
     controllerContext.allTopics = zkUtils.getAllTopics().toSet
+    //分区 -> brokerId
     controllerContext.partitionReplicaAssignment = zkUtils.getReplicaAssignmentForTopics(controllerContext.allTopics.toSeq)
+    //分区 -> (主副本说在brokerId和Isr列表，Controller选举纪元)
     controllerContext.partitionLeadershipInfo = new mutable.HashMap[TopicAndPartition, LeaderIsrAndControllerEpoch]
     controllerContext.shuttingDownBrokerIds = mutable.Set.empty[Int]
     // update the leader and isr cache for all existing partitions from Zookeeper
     updateLeaderAndIsrCache()
-    // start the channel manager
+    //控制器发送请求给代理节点，需要首先建立和服务端目标代理节点的网络连接。 控制器要连接的
+    //代理节点必须是存活的，它可以通过读取ZK节点（ /brokes/ids）来确定要连接哪些代理节点。 还有
+    //一种做法是在“更改代理节点的监昕器”中，控制器在处理代理节点的上下线事件之前，直接更新控
+    //制器的网络通道管理器：对于需要新增的代理节点，创建控制器到新代理节点的网络连接；对于需要
+    //删除的代理节点，取消控制器到旧代理节点的网络连接。
     startChannelManager()
+
     initializePartitionReassignment()
     info("Currently active brokers in the cluster: %s".format(controllerContext.liveBrokerIds))
     info("Currently shutting brokers in the cluster: %s".format(controllerContext.shuttingDownBrokerIds))
@@ -991,7 +1000,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
   /**
    * Send the leader information for selected partitions to selected brokers so that they can correctly respond to
    * metadata requests
-   *
+   * 主副本都没有在下线的节点上，通知所有代理节点“史新元数据”
    * @param brokers The brokers that the update metadata request should be sent to
    */
   def sendUpdateMetadataRequest(brokers: Seq[Int], partitions: Set[TopicAndPartition] = Set.empty[TopicAndPartition]) {
@@ -1503,7 +1512,9 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     def state = ControllerState.ControllerChange
 
     override def process(): Unit = {
+      //初始会话超时通知监听器，ZkClient的会话超时会自动重连接，所以Listener里不做任何处理
       registerSessionExpirationListener()
+      //清除掉ZK中各个path的事件通知
       registerControllerChangeListener()
       elect()
     }
@@ -1531,9 +1542,11 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     override def process(): Unit = {
       val wasActiveBeforeChange = isActive
       activeControllerId = getControllerID()
+      // wasActiveBeforeChange表示之前此Controller是不是主控制器，如果是的话需要请求掉在ZK上的注册的监听事件
       if (wasActiveBeforeChange && !isActive) {
         onControllerResignation()
       }
+      //选举主控制器
       elect()
     }
 
@@ -1579,7 +1592,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
   def elect(): Unit = {
     val timestamp = time.milliseconds
     val electString = ZkUtils.controllerZkData(config.brokerId, timestamp)
-
+    //主控制器ID，如果等于-1，则进行重新选举
     activeControllerId = getControllerID()
     /*
      * We can get here during the initial startup and the handleDeleted ZK callback. Because of the potential race condition,

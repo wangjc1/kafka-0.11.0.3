@@ -25,6 +25,7 @@ import scala.collection._
 /**
  * This class represents the state machine for replicas. It defines the states that a replica can be in, and
  * transitions to move the replica to another legal state. The different states that a replica can be in are -
+  副本的3个状态(1,2,3)
  * 1. NewReplica        : The controller can create new replicas during partition reassignment. In this state, a
  *                        replica can only get become follower state change request.  Valid previous
  *                        state is NonExistentReplica
@@ -33,6 +34,7 @@ import scala.collection._
  *                        Valid previous state are NewReplica, OnlineReplica or OfflineReplica
  * 3. OfflineReplica    : If a replica dies, it moves to this state. This happens when the broker hosting the replica
  *                        is down. Valid previous state are NewReplica, OnlineReplica
+  副本状态机还有三个关于删除的状态(3,4,5)
  * 4. ReplicaDeletionStarted: If replica deletion starts, it is moved to this state. Valid previous state is OfflineReplica
  * 5. ReplicaDeletionSuccessful: If replica responds with no error code in response to a delete replica request, it is
  *                        moved to this state. Valid previous state is ReplicaDeletionStarted

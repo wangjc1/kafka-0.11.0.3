@@ -343,6 +343,7 @@ class ControllerBrokerRequestBatch(controller: KafkaController) extends  Logging
     def updateMetadataRequestPartitionInfo(partition: TopicAndPartition, beingDeleted: Boolean) {
       val leaderIsrAndControllerEpochOpt = controllerContext.partitionLeadershipInfo.get(partition)
       leaderIsrAndControllerEpochOpt match {
+          //@是个链接符，如果l(小写L)变量和LeaderIsrAndControllerEpoch匹配则进入case，否则抛出异常
         case Some(l @ LeaderIsrAndControllerEpoch(leaderAndIsr, controllerEpoch)) =>
           val replicas = controllerContext.partitionReplicaAssignment(partition)
 
