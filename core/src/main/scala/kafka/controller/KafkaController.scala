@@ -1227,8 +1227,10 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     override def process(): Unit = {
       if (!isActive) return
       val partitionReplicaAssignment = zkUtils.getReplicaAssignmentForTopics(List(topic))
+      //新加入的Partition，比如以前是topics/[topic]/partitions/[id=1],新加入[id=2,3]
       val partitionsToBeAdded = partitionReplicaAssignment.filter(p =>
         !controllerContext.partitionReplicaAssignment.contains(p._1))
+      //该主题在删除队列中
       if(topicDeletionManager.isTopicQueuedUpForDeletion(topic))
         error("Skipping adding partitions %s for topic %s since it is currently being deleted"
           .format(partitionsToBeAdded.map(_._1.partition).mkString(","), topic))

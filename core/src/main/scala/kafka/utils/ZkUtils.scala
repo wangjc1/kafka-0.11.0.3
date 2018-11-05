@@ -725,6 +725,7 @@ class ZkUtils(val zkClient: ZkClient,
   def getReplicaAssignmentForTopics(topics: Seq[String]): mutable.Map[TopicAndPartition, Seq[Int]] = {
     val ret = new mutable.HashMap[TopicAndPartition, Seq[Int]]
     topics.foreach { topic =>
+      //读取topic节点中的数据：{"version":1,"partitions":{"0":[0]}}
       val jsonPartitionMapOpt = readDataMaybeNull(getTopicPath(topic))._1
       jsonPartitionMapOpt match {
         case Some(jsonPartitionMap) =>

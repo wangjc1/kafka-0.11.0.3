@@ -34,6 +34,7 @@ object ReplicationUtils extends Logging {
     zkVersion: Int): (Boolean,Int) = {
     debug(s"Updated ISR for $topic-$partitionId to ${newLeaderAndIsr.isr.mkString(",")}")
     val path = getTopicPartitionLeaderAndIsrPath(topic, partitionId)
+    //序列号成json格式数据
     val newLeaderData = zkUtils.leaderAndIsrZkData(newLeaderAndIsr, controllerEpoch)
     // use the epoch of the controller that made the leadership decision, instead of the current controller epoch
     val updatePersistentPath: (Boolean, Int) = zkUtils.conditionalUpdatePersistentPath(path, newLeaderData, zkVersion, Some(checkLeaderAndIsrZkData))

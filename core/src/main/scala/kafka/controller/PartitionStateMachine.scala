@@ -238,6 +238,7 @@ class PartitionStateMachine(controller: KafkaController) extends Logging {
   private def initializeLeaderAndIsrForPartition(topicAndPartition: TopicAndPartition) = {
     val replicaAssignment = controllerContext.partitionReplicaAssignment(topicAndPartition).toList
     val liveAssignedReplicas = replicaAssignment.filter(controllerContext.liveBrokerIds.contains)
+    // 副本集合中的第一个元素作为leader
     liveAssignedReplicas.headOption match {
       case None =>
         val failMsg = s"Controller $controllerId epoch ${controller.epoch} encountered error during state change of " +
@@ -318,13 +319,13 @@ class PartitionStateMachine(controller: KafkaController) extends Logging {
         // elect new leader or throw exception
         //(2）调用“选举分区主副本”具体实现类的selectLeader()方法，为分区选举最新的主副本
         val (leaderAndIsr, replicas) = leaderSelector.selectLeader(topicAndPartition, currentLeaderAndIsr)
+        //(3） 将最新的主副本和ISR信息（newLeaderAndIsr）更新到ZK的分区状态节点。
         val (updateSucceeded, newVersion) = ReplicationUtils.updateLeaderAndIsr(zkUtils, topic, partition,
           leaderAndIsr, controller.epoch, currentLeaderAndIsr.zkVersion)
         newLeaderAndIsr = leaderAndIsr.withZkVersion(newVersion)
         zookeeperPathUpdateSucceeded = updateSucceeded
         replicasForThisPartition = replicas
       }
-      //(3） 将最新的主副本和ISR信息（newLeaderAndIsr）更新到ZK的分区状态节点。
       val newLeaderIsrAndControllerEpoch = LeaderIsrAndControllerEpoch(newLeaderAndIsr, controller.epoch)
       // update the leader cache
       //(4）更新“上下文”的分区缓存信息（newLeaderIsrAndControllerEpoch）。
