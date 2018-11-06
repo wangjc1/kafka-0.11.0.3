@@ -419,11 +419,14 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     info("Removed %s from list of shutting down brokers.".format(deadBrokersThatWereShuttingDown))
     val deadBrokersSet = deadBrokers.toSet
     // trigger OfflinePartition state for all partitions whose current leader is one amongst the dead brokers
+    // 如果leader在挂掉的broker上，他的主题又不是在主题删掉队列中，才会在partitionsWithoutLeader列表中
     val partitionsWithoutLeader = controllerContext.partitionLeadershipInfo.filter(partitionAndLeader =>
       deadBrokersSet.contains(partitionAndLeader._2.leaderAndIsr.leader) &&
         !topicDeletionManager.isTopicQueuedUpForDeletion(partitionAndLeader._1.topic)).keySet
+    // 让没有主副本的分区下线
     partitionStateMachine.handleStateChanges(partitionsWithoutLeader, OfflinePartition)
     // trigger OnlinePartition state changes for offline or new partitions
+    // 重新选举分区的主副本， “下线状态”的分区会转为“上线状态”
     partitionStateMachine.triggerOnlinePartitionStateChange()
     // filter out the replicas that belong to topics that are being deleted
     var allReplicasOnDeadBrokers = controllerContext.replicasOnBrokers(deadBrokersSet)
