@@ -304,7 +304,7 @@ class PartitionStateMachine(controller: KafkaController) extends Logging {
       var newLeaderAndIsr: LeaderAndIsr = null
       var replicasForThisPartition: Seq[Int] = Seq.empty[Int]
       while(!zookeeperPathUpdateSucceeded) {
-        //(1）从分区的状态节点读取分区当前的主副本、 ISR集合（currentLeaderIsrAndEpoch）。
+        //(1）从分区的状态节点读取分区当前的主副本、 ISR集合（currentLeaderIsrAndEpoch），如果获取不到则抛出异常。
         val currentLeaderIsrAndEpoch = getLeaderIsrAndEpochOrThrowException(topic, partition)
         val currentLeaderAndIsr = currentLeaderIsrAndEpoch.leaderAndIsr
         val controllerEpoch = currentLeaderIsrAndEpoch.controllerEpoch

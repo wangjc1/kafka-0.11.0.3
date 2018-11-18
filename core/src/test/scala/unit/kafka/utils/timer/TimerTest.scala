@@ -51,10 +51,10 @@ class TimerTest {
 
   @Test
   def testTimingWheel(): Unit = {
-    timer = new SystemTimer("test", tickMs = 1000, wheelSize = 3)
+    timer = new SystemTimer("test", tickMs = 1, wheelSize = 8)
 
     val output = new ArrayBuffer[Int]()
-    val latches = List(8000).map { i =>
+    val latches = List(1000).map { i =>
       val latch = new CountDownLatch(1)
       timer.add(new TestTask(i, i, latch, output))
       latch
@@ -62,11 +62,11 @@ class TimerTest {
 
     timer.advanceClock(200)
 
-    latches.take(5).foreach { latch =>
+    latches.take(1).foreach { latch =>
       assertEquals("already expired tasks should run immediately", true, latch.await(3, TimeUnit.SECONDS))
     }
 
-    assertEquals("output of already expired tasks", Set(2), output.toSet)
+    assertEquals("output of already expired tasks", Set(1000), output.toSet)
   }
 
   @Test

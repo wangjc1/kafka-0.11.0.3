@@ -471,7 +471,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
    */
   def onNewPartitionCreation(newPartitions: Set[TopicAndPartition]) {
     info("New partition creation callback for %s".format(newPartitions.mkString(",")))
-    partitionStateMachine.handleStateChanges(newPartitions, NewPartition)
+    partitionStateMachine. handleStateChanges(newPartitions, NewPartition)
     replicaStateMachine.handleStateChanges(controllerContext.replicasForPartition(newPartitions), NewReplica)
     partitionStateMachine.handleStateChanges(newPartitions, OnlinePartition, offlinePartitionSelector)
     replicaStateMachine.handleStateChanges(controllerContext.replicasForPartition(newPartitions), OnlineReplica)
@@ -1267,6 +1267,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
           topicsToBeDeleted.foreach { topic =>
             val partitionReassignmentInProgress =
               controllerContext.partitionsBeingReassigned.keySet.map(_.topic).contains(topic)
+            //主题正在执行重新分配分区；标记为无效的删除
             if (partitionReassignmentInProgress)
               topicDeletionManager.markTopicIneligibleForDeletion(Set(topic))
           }

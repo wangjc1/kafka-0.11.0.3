@@ -82,6 +82,7 @@ class OfflinePartitionLeaderSelector(controllerContext: ControllerContext, confi
             }
           } else {
             val liveReplicasInIsr = liveAssignedReplicas.filter(r => liveBrokersInIsr.contains(r))
+            //取ISR中第一个元素作为leader
             val newLeader = liveReplicasInIsr.head
             debug(s"Some broker in ISR is alive for $topicAndPartition. Select $newLeader from ISR " +
               s"${liveBrokersInIsr.mkString(",")} to be the leader.")

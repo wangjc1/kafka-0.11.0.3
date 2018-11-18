@@ -59,11 +59,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class RecordAccumulatorTest {
 
@@ -99,11 +95,13 @@ public class RecordAccumulatorTest {
         long now = time.milliseconds();
 
         // test case assumes that the records do not fill the batch completely
-        int batchSize = 1024; //10
-
+        int batchSize = 1024;
         RecordAccumulator accum = new RecordAccumulator(batchSize + DefaultRecordBatch.RECORD_BATCH_OVERHEAD, 10L * batchSize,
                 CompressionType.NONE, 10L, 100L, metrics, time, new ApiVersions(), null);
+
+        //这里是根据一个ProducerBatch大小计算出来append多少次，当超过appends数量时，就会添加到Deque的第二个元素中
         int appends = expectedNumAppends(batchSize);
+        assertEquals("还不具备发送条件",0, accum.ready(cluster, now).readyNodes.size());
         for (int i = 0; i < appends; i++) {
             // append to the first batch
             RecordAccumulator.RecordAppendResult result = accum.append(tp1, 0L, key, value, Record.EMPTY_HEADERS, null, maxBlockTimeMs);
@@ -113,11 +111,13 @@ public class RecordAccumulatorTest {
 
             ProducerBatch batch = partitionBatches.peekFirst();
             assertTrue(batch.isWritable());
-            assertEquals("No partitions should be ready.", 0, accum.ready(cluster, now).readyNodes.size());
         }
+        //当readyNodes.size()>0 表示消息具备发送条件了： boolean sendable = full || expired || exhausted || closed || flushInProgress();
+        //其中一个条件就是Deque中队首Batch元素已经满了
+        assertEquals("数据准备好了，可以发送生产请求了", 1, accum.ready(cluster, now).readyNodes.size());
 
         // this append doesn't fit in the first batch, so a new batch is created and the first batch is closed
-
+        // Deque<ProducerBatch>中第一个元素已经被填满，再加记录就会添加到队列中的第二个ProducerBatch中
         accum.append(tp1, 0L, key, value, Record.EMPTY_HEADERS, null, maxBlockTimeMs);
         Deque<ProducerBatch> partitionBatches = accum.batches().get(tp1);
         assertEquals(2, partitionBatches.size());
@@ -136,6 +136,34 @@ public class RecordAccumulatorTest {
             assertEquals("Values should match", ByteBuffer.wrap(value), record.value());
         }
         assertFalse("No more records", iter.hasNext());
+    }
+
+    @Test
+    public void testDrain() throws Exception {
+        long now = time.milliseconds();
+
+        int batchSize = 64;
+        RecordAccumulator accum = new RecordAccumulator(batchSize + DefaultRecordBatch.RECORD_BATCH_OVERHEAD, 10L * batchSize,
+                CompressionType.NONE, 10L, 100L, metrics, time, new ApiVersions(), null);
+        int appends = expectedNumAppends(batchSize);
+        for (int i = 0; i < appends; i++) {
+            RecordAccumulator.RecordAppendResult result = accum.append(tp1, 0L, key, value, Record.EMPTY_HEADERS, null, maxBlockTimeMs);
+            assertNotNull(result);
+            Deque<ProducerBatch> partitionBatches = accum.batches().get(tp1);
+            assertEquals(1, partitionBatches.size());
+
+            List<ProducerBatch> batches = accum.drain(cluster, accum.ready(cluster, now).readyNodes, Integer.MAX_VALUE, 0).get(node1.id());
+            assertNull(batches);
+        }
+
+
+        RecordAccumulator.RecordAppendResult result = accum.append(tp1, 0L, key, value, Record.EMPTY_HEADERS, null, maxBlockTimeMs);
+        Deque<ProducerBatch>  partitionBatches = accum.batches().get(tp1);
+        assertEquals(2, partitionBatches.size());
+        assertEquals( 1, accum.ready(cluster, now).readyNodes.size());
+
+        List<ProducerBatch> batches = accum.drain(cluster, accum.ready(cluster, now).readyNodes, Integer.MAX_VALUE, 0).get(node1.id());
+        assertEquals(1, batches.size());
     }
 
     @Test
