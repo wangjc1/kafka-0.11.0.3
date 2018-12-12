@@ -52,6 +52,7 @@ public class DefaultRecordBatchTest {
                             producerEpoch, baseSequence, baseOffset, lastOffset, partitionLeaderEpoch, timestampType,
                             timestamp, isTransactional, isControlBatch);
                     buffer.flip();
+
                     DefaultRecordBatch batch = new DefaultRecordBatch(buffer);
                     assertEquals(producerId, batch.producerId());
                     assertEquals(producerEpoch, batch.producerEpoch());

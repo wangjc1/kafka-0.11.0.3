@@ -175,8 +175,8 @@ public class ProduceRequest extends AbstractRequest {
         // clients which send the wrong magic version in the wrong version of the produce request. The broker
         // did not do this validation before, so we maintain that behavior here.
     }
-
     /**
+
      * Visible for testing.
      */
     @Override

@@ -23,10 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class ByteBufferLogInputStreamTest {
 
@@ -44,6 +41,8 @@ public class ByteBufferLogInputStreamTest {
         builder.close();
 
         buffer.flip();
+        // 在ByteBufferLogInputStream中有个if (remaining < batchSize)判断，
+        // 这里故意减去5，然后返回null，所以当第二次调用iterator.hasNext()是返回false
         buffer.limit(buffer.limit() - 5);
 
         MemoryRecords records = MemoryRecords.readableRecords(buffer);
@@ -51,6 +50,12 @@ public class ByteBufferLogInputStreamTest {
         assertTrue(iterator.hasNext());
         MutableRecordBatch first = iterator.next();
         assertEquals(1L, first.lastOffset());
+
+        Iterator<Record> rs = first.iterator();
+        while (rs.hasNext()){
+            Record r = rs.next();
+            System.out.println(new String(r.key().array())+":"+new String(r.value().array()));
+        }
 
         assertFalse(iterator.hasNext());
     }
@@ -74,6 +79,7 @@ public class ByteBufferLogInputStreamTest {
         buffer.putInt(position + DefaultRecordBatch.LENGTH_OFFSET, 9);
 
         ByteBufferLogInputStream logInputStream = new ByteBufferLogInputStream(buffer, Integer.MAX_VALUE);
+
         assertNotNull(logInputStream.nextBatch());
         logInputStream.nextBatch();
     }

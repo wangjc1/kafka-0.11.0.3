@@ -288,6 +288,7 @@ class ReplicaManager(val config: KafkaConfig,
         if (deletePartition) {
           val removedPartition = allPartitions.remove(topicPartition)
           if (removedPartition != null) {
+            // 删除此分区下日志文件
             removedPartition.delete() // this will delete the local log
             val topicHasPartitions = allPartitions.keys.exists(tp => topicPartition.topic == tp.topic)
             if (!topicHasPartitions)
@@ -1001,6 +1002,7 @@ class ReplicaManager(val config: KafkaConfig,
         metadataCache.getAliveBrokers.find(_.id == newLeaderBrokerId) match {
           // Only change partition state when the leader is available
           case Some(_) =>
+            //这里会创建或获取副本所在broker上的日志文件
             if (partition.makeFollower(controllerId, partitionStateInfo, correlationId))
               partitionsToMakeFollower += partition
             else

@@ -612,6 +612,7 @@ class KafkaApis(val requestChannel: RequestChannel,
       }
     }
 
+    //上面的代码都是些方法，等调用完replicaManager.fetchMessages()拉取方法后，会回调processResponseCallback()方法
     if (authorizedRequestInfo.isEmpty)
       processResponseCallback(Seq.empty)
     else {

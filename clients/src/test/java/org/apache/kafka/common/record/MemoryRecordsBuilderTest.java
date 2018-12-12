@@ -58,6 +58,19 @@ public class MemoryRecordsBuilderTest {
     }
 
     @Test
+    public void testWriteSImpleRecord() {
+        ByteBuffer buffer = ByteBuffer.allocate(128);
+
+        MemoryRecordsBuilder builder = new MemoryRecordsBuilder(buffer, RecordBatch.MAGIC_VALUE_V1, compressionType,
+                TimestampType.CREATE_TIME, 0L, 0L, RecordBatch.NO_PRODUCER_ID, RecordBatch.NO_PRODUCER_EPOCH, RecordBatch.NO_SEQUENCE,
+                false, false, RecordBatch.NO_PARTITION_LEADER_EPOCH, buffer.capacity());
+
+        builder.append(new SimpleRecord(1L, "a".getBytes(), "1".getBytes()));
+        MemoryRecords records = builder.build();
+        assertEquals(1,  Utils.toList(records.batches().iterator()).size());
+    }
+
+    @Test
     public void testWriteTransactionalRecordSet() {
         ByteBuffer buffer = ByteBuffer.allocate(128);
         buffer.position(bufferOffset);

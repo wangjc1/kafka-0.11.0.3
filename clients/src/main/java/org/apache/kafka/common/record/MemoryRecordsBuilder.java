@@ -294,9 +294,13 @@ public class MemoryRecordsBuilder {
             else if (compressionType != CompressionType.NONE)
                 this.actualCompressionRatio = (float) writeLegacyCompressedWrapperHeader() / this.writtenUncompressed;
 
+            // duplicate() 函数创建了一个与原始缓冲区相似的新缓冲区。两个缓冲区共享数据元素，拥有同样的容量，
+            // 但每个缓冲区拥有各自的 position、limit 和 mark 属性。对一个缓冲区的数据元素所做的改变会反映在另外一个缓冲区上
             ByteBuffer buffer = buffer().duplicate();
             buffer.flip();
             buffer.position(initialPosition);
+            // 分割缓冲区与复制相似，但 slice() 创建一个从原始缓冲区的当前 position 开始的新缓冲区，并且其容量是原始缓冲区的
+            // 剩余元素数量（limit - position）。这个新缓冲区与原始缓冲区共享一段数据元素子序列
             builtRecords = MemoryRecords.readableRecords(buffer.slice());
         }
     }

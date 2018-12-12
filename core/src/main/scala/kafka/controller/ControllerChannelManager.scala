@@ -343,7 +343,7 @@ class ControllerBrokerRequestBatch(controller: KafkaController) extends  Logging
     def updateMetadataRequestPartitionInfo(partition: TopicAndPartition, beingDeleted: Boolean) {
       val leaderIsrAndControllerEpochOpt = controllerContext.partitionLeadershipInfo.get(partition)
       leaderIsrAndControllerEpochOpt match {
-          //@是个链接符，如果l(小写L)变量和LeaderIsrAndControllerEpoch匹配则进入case，否则抛出异常
+          //@是个链接符，如果l(小写L)变量是LeaderIsrAndControllerEpoch类型则进入case，否则抛出异常
         case Some(l @ LeaderIsrAndControllerEpoch(leaderAndIsr, controllerEpoch)) =>
           val replicas = controllerContext.partitionReplicaAssignment(partition)
 
@@ -375,6 +375,7 @@ class ControllerBrokerRequestBatch(controller: KafkaController) extends  Logging
 
     updateMetadataRequestBrokerSet ++= brokerIds.filter(_ >= 0)
     filteredPartitions.foreach(partition => updateMetadataRequestPartitionInfo(partition, beingDeleted = false))
+    //controller.topicDeletionManager.partitionsToBeDeleted  为要删除的分区，通知给其他broker，
     controller.topicDeletionManager.partitionsToBeDeleted.foreach(partition => updateMetadataRequestPartitionInfo(partition, beingDeleted = true))
   }
 

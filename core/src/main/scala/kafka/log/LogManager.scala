@@ -554,6 +554,8 @@ class LogManager(val logDirs: Array[File],
   }
 
   /**
+   * 日志管理器启动时全定时调度flushDirtyLogs()方法，定期将页面缓存(由操作系统控制)中的数据真正刷写到磁盘
+     每隔一定的时间（log.flush.interval.ms）或超过一定大小
    * Flush any log which has exceeded its flush interval and has unwritten messages.
    */
   private def flushDirtyLogs() = {

@@ -190,19 +190,19 @@ public class RequestFutureTest {
      */
     @Test
     public void testComposeSuccessCase() {
-        RequestFuture<String> future = new RequestFuture<>();
-        RequestFuture<Integer> composed = future.compose(new RequestFutureAdapter<String, Integer>() {
-            /**
+        RequestFuture<String> preFuture = new RequestFuture<>();
+        RequestFuture<Integer> composed = preFuture.compose(new RequestFutureAdapter<String, Integer>() {
+             /**
              * 在compose方法中调用重新构建出一个新的newFuture
              * 然后再Adapter的onSuccess方法中触发新构建的newFuture的成功或失败方法
              */
             @Override
-            public void onSuccess(String value, RequestFuture<Integer> future) {
-                future.complete(value.length());
+            public void onSuccess(String value, RequestFuture<Integer> newFutrue) {
+                newFutrue.complete(value.length());
             }
         });
 
-        future.complete("hello");
+        preFuture.complete("hello");
 
         assertTrue(composed.isDone());
         assertTrue(composed.succeeded());

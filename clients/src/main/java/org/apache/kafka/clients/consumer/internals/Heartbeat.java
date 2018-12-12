@@ -32,6 +32,7 @@ public final class Heartbeat {
     //上一次心跳成功响应时间点
     private long lastHeartbeatReceive;
     //查找主coordinator后响应GroupCoordinatorResponseHandler回调中调用resetTimeouts()方法更新的一个时间点
+    //也就是Consumer客户端和GroupCoordinator成功建立连接后的一个时间点
     private long lastSessionReset;
     //上一次调用pollHeartbeat(now)方法的时间点
     private long lastPoll;

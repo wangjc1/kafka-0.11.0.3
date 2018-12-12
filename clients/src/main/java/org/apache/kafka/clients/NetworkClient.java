@@ -84,6 +84,9 @@ public class NetworkClient implements KafkaClient {
     private final String clientId;
 
     /* the current correlation id to use when sending requests to servers */
+    /* 由客户端指定的一个数字唯一标识这次请求的id，服务器端在处理请求后也会把同样的CorrelationId
+       写到Response中，这样客户端就能把某个请求和响应对应起来了
+    */
     private int correlation;
 
     /* max time in ms for the producer to wait for acknowledgement from server*/
@@ -444,6 +447,7 @@ public class NetworkClient implements KafkaClient {
         //将完成请求的response(里面包含request的callback回调方法)结果添加到responses队列
         handleCompletedReceives(responses, updatedNow);
         handleDisconnections(responses, updatedNow);
+        //更新客户端和broker服务器的连接状态为READY
         handleConnections();
         handleInitiateApiVersionRequests(updatedNow);
         handleTimedOutRequests(responses, updatedNow);

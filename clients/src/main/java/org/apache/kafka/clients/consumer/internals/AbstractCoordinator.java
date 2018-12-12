@@ -724,6 +724,9 @@ public abstract class AbstractCoordinator implements Closeable {
         resetGeneration();
     }
 
+    /**
+     * 构建一个compose的适配器对象，调用成功后设置future.complete(null)异步结果，因为这里异步结果不需要返回值，所以传入null
+     */
     private class LeaveGroupResponseHandler extends CoordinatorResponseHandler<LeaveGroupResponse, Void> {
         @Override
         public void handle(LeaveGroupResponse leaveResponse, RequestFuture<Void> future) {
