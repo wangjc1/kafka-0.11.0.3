@@ -98,6 +98,52 @@ public class DefaultRecordBatchTest {
     }
 
     @Test
+    public void testTwoRecordBatch() {
+        ByteBuffer buffer = ByteBuffer.allocate(2048);
+
+        //追加第一个RecordBatch元素
+        MemoryRecordsBuilder builder = MemoryRecords.builder(buffer, RecordBatch.MAGIC_VALUE_V2,
+                CompressionType.NONE, TimestampType.CREATE_TIME, 0L);
+        builder.append(1L, "1".getBytes(), "a".getBytes());
+        //每close()一次，就会生成一个RecordBatch元素
+        builder.close();
+
+        //追加第二个RecordBatch元素
+        builder = MemoryRecords.builder(buffer, RecordBatch.MAGIC_VALUE_V2, CompressionType.NONE,
+                TimestampType.CREATE_TIME, 1L);
+        builder.append(2L, "2".getBytes(), "b".getBytes());//lastOffset=1
+        builder.append(3L, "3".getBytes(), "c".getBytes());//lastOffset=2
+        //每close()一次，就会生成一个RecordBatch元素
+        builder.close();
+
+        //将position指向0
+        buffer.flip();
+
+        //从buffer中读取Records
+        Records records = MemoryRecords.readableRecords(buffer);
+
+        //一共生成两个RecordBatch
+        assertEquals(2,Utils.toList(records.batches().iterator()).size());
+
+        for (RecordBatch batch : records.batches()) {
+            if(batch.baseOffset()==1){
+                assertTrue(batch.isValid());
+                assertEquals(1, batch.baseOffset());
+                assertEquals(2, batch.lastOffset());
+                assertEquals(3L, batch.maxTimestamp());
+                assertEquals(RecordBatch.NO_PRODUCER_ID, batch.producerId());
+                assertEquals(RecordBatch.NO_PRODUCER_EPOCH, batch.producerEpoch());
+                assertEquals(RecordBatch.NO_SEQUENCE, batch.baseSequence());
+                assertEquals(RecordBatch.NO_SEQUENCE, batch.lastSequence());
+            }
+
+            for (Record record : batch) {
+                assertTrue(record.isValid());
+            }
+        }
+    }
+
+    @Test
     public void buildDefaultRecordBatchWithProducerId() {
         long pid = 23423L;
         short epoch = 145;
