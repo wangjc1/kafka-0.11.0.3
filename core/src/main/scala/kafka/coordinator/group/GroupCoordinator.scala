@@ -772,6 +772,7 @@ class GroupCoordinator(val brokerId: Int,
 
       if (!group.is(Dead)) {
         //如果members不为空，则更新group.state=AwaitingSync；如果members为空则更新group.state=Empty
+        //没执行一次JoinGroup，generationId就加1
         group.initNextGeneration()
         if (group.is(Empty)) {
           info(s"Group ${group.groupId} with generation ${group.generationId} is now empty " +

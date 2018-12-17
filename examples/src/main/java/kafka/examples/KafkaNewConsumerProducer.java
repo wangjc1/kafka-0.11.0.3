@@ -41,21 +41,22 @@ public class KafkaNewConsumerProducer {
         Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
         producerThread.start();*/
 
-        Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);
-        consumerThread.start();
+       for(int i=0;i<1;i++){
+           Consumer consumerThread = new Consumer("KafkaConsumerExample_"+i,KafkaProperties.TOPIC);
+           consumerThread.start();
+       }
     }
-
 }
 
 class Consumer extends ShutdownableThread {
     private final KafkaConsumer<Integer, String> consumer;
     private final String topic;
 
-    public Consumer(String topic) {
-        super("KafkaConsumerExample", false);
+    public Consumer(String name,String topic) {
+        super(name, false);
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaProperties.KAFKA_SERVER_URL + ":" + KafkaProperties.KAFKA_SERVER_PORT);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "DemoConsumer");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "DemoConsumerGroup");
         // 自动提交消费完的offset
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         // 每隔多长时间提交一次offset
@@ -76,6 +77,8 @@ class Consumer extends ShutdownableThread {
         consumer.subscribe(Collections.singletonList(this.topic));
         //assign相当于老版本中Low API,无动态分配再平衡功能
         //consumer.assign(Collections.singletonList(new TopicPartition(topic,leader)));
+        //消费指定偏移量的记录
+        //consumer.seek(new TopicPartition(topic,leader),0);
 
         ConsumerRecords<Integer, String> records = consumer.poll(1000);
         for (ConsumerRecord<Integer, String> record : records) {
@@ -101,7 +104,7 @@ class Producer extends Thread {
 
     public Producer(String topic, Boolean isAsync) {
         Properties props = new Properties();
-        props.put("bootstrap.servers", KafkaProperties.KAFKA_SERVER_URL + ":" + 9090);
+        props.put("bootstrap.servers", KafkaProperties.KAFKA_SERVER_URL + ":" + KafkaProperties.KAFKA_SERVER_PORT);
         props.put("client.id", "DemoProducer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
