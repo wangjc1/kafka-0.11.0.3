@@ -1010,7 +1010,7 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
      *
      * @param timeout The time, in milliseconds, spent waiting in poll if data is not available in the buffer.
      *            If 0, returns immediately with any records that are available currently in the buffer, else returns empty.
-     *            Must not be negative.
+     *            Must not be negative.当没有数据时，每隔多长时间拉取一次
      * @return map of topic to records since the last fetch for the subscribed list of topics and partitions
      *
      * @throws org.apache.kafka.clients.consumer.InvalidOffsetException if the offset for a partition or set of

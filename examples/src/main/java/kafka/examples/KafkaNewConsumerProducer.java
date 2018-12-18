@@ -41,7 +41,7 @@ public class KafkaNewConsumerProducer {
         Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
         producerThread.start();*/
 
-       for(int i=0;i<1;i++){
+       for(int i=0;i<3;i++){
            Consumer consumerThread = new Consumer("KafkaConsumerExample_"+i,KafkaProperties.TOPIC);
            consumerThread.start();
        }
@@ -63,7 +63,13 @@ class Consumer extends ShutdownableThread {
         props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
         //每次拉取的记录条数
         props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1");
-        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000");
+        //Session过期时间
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "50000");
+        //最大拉取数据间隔时间，用作初始化InitialDelayedJoin的剩余时间
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "40000");
+        //心跳时间间隔
+        props.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, "3000");
+        //序列号类
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.IntegerDeserializer");
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
 

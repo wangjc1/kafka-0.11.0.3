@@ -214,7 +214,8 @@ private[group] class GroupMetadata(val groupId: String, initialState: GroupState
   def allMembers = members.keySet
 
   def allMemberMetadata = members.values.toList
-
+  // foldLeft(0),索引从0开始迭代元素，(timeout, member)，timeout是返回值，member是迭代的元素
+  // 先计算第一个元素最大的rebalanceTimeoutMs，然后作为参数传入给第二元素，依次迭代计算
   def rebalanceTimeoutMs = members.values.foldLeft(0) { (timeout, member) =>
     timeout.max(member.rebalanceTimeoutMs)
   }
