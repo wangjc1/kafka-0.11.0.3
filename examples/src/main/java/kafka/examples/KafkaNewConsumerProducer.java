@@ -17,18 +17,16 @@
 package kafka.examples;
 
 import kafka.utils.ShutdownableThread;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.utils.Utils;
 
+import java.util.Collection;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -54,7 +52,7 @@ public class KafkaNewConsumerProducer {
 class Consumer extends ShutdownableThread {
     private final KafkaConsumer<Integer, String> consumer;
     private final String topic;
-    private final Map<TopicPartition,Long> offsetManager = new ConcurrentHashMap();
+    private final ConcurrentHashMap<TopicPartition,Long> offsetManager = new ConcurrentHashMap();
 
     public Consumer(String name,String topic) {
         super(name, false);
@@ -68,7 +66,7 @@ class Consumer extends ShutdownableThread {
         //每次拉取的记录条数
         props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "1");
         //Session过期时间
-        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "50000");
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "10000");
         //最大拉取数据间隔时间，用作初始化InitialDelayedJoin的剩余时间
         props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "40000");
         //心跳时间间隔
@@ -84,10 +82,10 @@ class Consumer extends ShutdownableThread {
     @Override
     public void doWork() {
         //subscribe相当于老版本中High API,可以实现动态分配动态平衡的功能
-        consumer.subscribe(Collections.singletonList(this.topic)/*, new ConsumerRebalanceListener() {
-            *//**
+        consumer.subscribe(Collections.singletonList(this.topic), new ConsumerRebalanceListener() {
+            /**
              * 这个方法可以保存偏移量到介质中，比如DB、HDFS
-             *//*
+             */
             @Override
             public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                 for(TopicPartition p:partitions){
@@ -96,17 +94,17 @@ class Consumer extends ShutdownableThread {
                 }
             }
 
-            *//**
+            /**
              * 这个方法中可以从介质中把偏移量读出来
-             *//*
+             */
             @Override
             public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
                 for(TopicPartition p:partitions){
-                    consumer.seek(p,offsetManager.get(p));
+                    consumer.seek(p,offsetManager.get(p)==null?0:offsetManager.get(p));
                     Utils.println("Topic=%s,Partition=%s,Postition=%s",p.topic(),p.partition()+"",offsetManager.get(p)+"");
                 }
             }
-        }*/);
+        });
 
         //assign相当于老版本中Low API,无动态分配再平衡功能
         //consumer.assign(Collections.singletonList(new TopicPartition(topic,leader)));
