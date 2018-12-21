@@ -21,10 +21,11 @@ package org.apache.kafka.clients.consumer.internals;
  */
 public final class Heartbeat {
     private final long sessionTimeout;
-    //每次发送心跳间隔时间
+    //每次发送心跳间隔时间，由heartbeat.interval.ms参数配置
     private final long heartbeatInterval;
     //由max.poll.interval.ms参数配置，最大拉取时长
     private final long maxPollInterval;
+    //重试时间，由retry.backoff.ms参数设置
     private final long retryBackoffMs;
 
     //上一次发送心跳的时间点

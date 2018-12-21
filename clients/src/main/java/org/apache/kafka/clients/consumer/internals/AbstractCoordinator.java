@@ -276,7 +276,7 @@ public abstract class AbstractCoordinator implements Closeable {
                 throw cause;
             }
             // Awake the heartbeat thread if needed
-            // 如果要
+            // 如果下一次心跳的时间到了，就唤醒Heartthread线程，发送一次心跳
             if (heartbeat.shouldHeartbeat(now)) {
                 notify();
             }

@@ -25,9 +25,12 @@ import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -41,7 +44,7 @@ public class KafkaNewConsumerProducer {
         Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
         producerThread.start();*/
 
-       for(int i=0;i<3;i++){
+       for(int i=0;i<1;i++){
            Consumer consumerThread = new Consumer("KafkaConsumerExample_"+i,KafkaProperties.TOPIC);
            consumerThread.start();
        }
@@ -51,6 +54,7 @@ public class KafkaNewConsumerProducer {
 class Consumer extends ShutdownableThread {
     private final KafkaConsumer<Integer, String> consumer;
     private final String topic;
+    private final Map<TopicPartition,Long> offsetManager = new ConcurrentHashMap();
 
     public Consumer(String name,String topic) {
         super(name, false);
@@ -80,7 +84,30 @@ class Consumer extends ShutdownableThread {
     @Override
     public void doWork() {
         //subscribe相当于老版本中High API,可以实现动态分配动态平衡的功能
-        consumer.subscribe(Collections.singletonList(this.topic));
+        consumer.subscribe(Collections.singletonList(this.topic)/*, new ConsumerRebalanceListener() {
+            *//**
+             * 这个方法可以保存偏移量到介质中，比如DB、HDFS
+             *//*
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                for(TopicPartition p:partitions){
+                    offsetManager.put(p,consumer.position(p));
+                    Utils.println("Topic=%s,Partition=%s,Postition=%s",p.topic(),p.partition()+"",consumer.position(p)+"");
+                }
+            }
+
+            *//**
+             * 这个方法中可以从介质中把偏移量读出来
+             *//*
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                for(TopicPartition p:partitions){
+                    consumer.seek(p,offsetManager.get(p));
+                    Utils.println("Topic=%s,Partition=%s,Postition=%s",p.topic(),p.partition()+"",offsetManager.get(p)+"");
+                }
+            }
+        }*/);
+
         //assign相当于老版本中Low API,无动态分配再平衡功能
         //consumer.assign(Collections.singletonList(new TopicPartition(topic,leader)));
         //消费指定偏移量的记录
