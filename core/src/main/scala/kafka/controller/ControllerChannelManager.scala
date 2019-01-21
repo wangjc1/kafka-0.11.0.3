@@ -381,6 +381,7 @@ class ControllerBrokerRequestBatch(controller: KafkaController) extends  Logging
 
   def sendRequestsToBrokers(controllerEpoch: Int) {
     try {
+      //按broker分组，将发送到同一个broker上的数据
       leaderAndIsrRequestMap.foreach { case (broker, partitionStateInfos) =>
         partitionStateInfos.foreach { case (topicPartition, state) =>
           val typeOfRequest =
@@ -391,10 +392,13 @@ class ControllerBrokerRequestBatch(controller: KafkaController) extends  Logging
                                                                    state.leaderIsrAndControllerEpoch, broker,
                                                                    topicPartition.topic, topicPartition.partition))
         }
+        //broker上所有leader副本
         val leaderIds = partitionStateInfos.map(_._2.leaderIsrAndControllerEpoch.leaderAndIsr.leader).toSet
+        //获取leader副本所在存活的broker集合
         val leaders = controllerContext.liveOrShuttingDownBrokers.filter(b => leaderIds.contains(b.id)).map {
           _.getNode(controller.config.interBrokerListenerName)
         }
+        //分区信息集合，类似：{Pl  :  PartitionStatelnfo(leader＝1,isr＝［1,2,3],ar＝［1,2,3］）
         val partitionStates = partitionStateInfos.map { case (topicPartition, partitionStateInfo) =>
           val LeaderIsrAndControllerEpoch(leaderIsr, controllerEpoch) = partitionStateInfo.leaderIsrAndControllerEpoch
           val partitionState = new requests.PartitionState(controllerEpoch, leaderIsr.leader,
@@ -407,6 +411,7 @@ class ControllerBrokerRequestBatch(controller: KafkaController) extends  Logging
         controller.sendRequest(broker, ApiKeys.LEADER_AND_ISR, leaderAndIsrRequest)
       }
       leaderAndIsrRequestMap.clear()
+
 
       updateMetadataRequestPartitionInfoMap.foreach(p => stateChangeLogger.trace(("Controller %d epoch %d sending UpdateMetadata request %s " +
         "to brokers %s for partition %s").format(controllerId, controllerEpoch, p._2.leaderIsrAndControllerEpoch,
@@ -447,6 +452,7 @@ class ControllerBrokerRequestBatch(controller: KafkaController) extends  Logging
           liveBrokers.asJava)
       }
 
+      //发送ApiKeys.UPDATE_METADATA_KEY 请求
       updateMetadataRequestBrokerSet.foreach { broker =>
         controller.sendRequest(broker, ApiKeys.UPDATE_METADATA_KEY, updateMetadataRequest, null)
       }
@@ -469,6 +475,7 @@ class ControllerBrokerRequestBatch(controller: KafkaController) extends  Logging
           replicasToGroup.map(r => new TopicPartition(r.replica.topic, r.replica.partition)).toSet.asJava)
         controller.sendRequest(broker, ApiKeys.STOP_REPLICA, stopReplicaRequest)
 
+        //发送ApiKeys.STOP_REPLICA请求
         replicasToNotGroup.foreach { r =>
           val stopReplicaRequest = new StopReplicaRequest.Builder(
               controllerId, controllerEpoch, r.deletePartition,

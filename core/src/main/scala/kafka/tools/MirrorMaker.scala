@@ -236,6 +236,8 @@ object MirrorMaker extends Logging with KafkaMetricsGroup {
       // Always set producer key and value serializer to ByteArraySerializer.
       producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
       producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
+
+      //生成消息端
       producer = new MirrorMakerProducer(sync, producerProps)
 
       // Create consumers
@@ -418,6 +420,7 @@ object MirrorMaker extends Logging with KafkaMetricsGroup {
     override def run() {
       info("Starting mirror maker thread " + threadName)
       try {
+        // 初始化主题和消费监听器
         mirrorMakerConsumer.init()
 
         // We need the two while loop to make sure when old consumer is used, even there is no message we
@@ -425,6 +428,7 @@ object MirrorMaker extends Logging with KafkaMetricsGroup {
         while (!exitingOnSendFailure && !shuttingDown) {
           try {
             while (!exitingOnSendFailure && !shuttingDown && mirrorMakerConsumer.hasData) {
+              //调用consumer.poll()方法拉取消息，没有数据会抛出ConsumerTimeoutException异常，退出while循环
               val data = mirrorMakerConsumer.receive()
               trace("Sending message with value size %d and offset %d".format(data.value.length, data.offset))
               val records = messageHandler.handle(data)

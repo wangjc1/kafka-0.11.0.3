@@ -730,6 +730,7 @@ class ZkUtils(val zkClient: ZkClient,
       jsonPartitionMapOpt match {
         case Some(jsonPartitionMap) =>
           Json.parseFull(jsonPartitionMap) match {
+            //{"version":1,"partitions":{"0":[1]}} ”0“是分区编号，”[1]“代表目前只有一个副本
             case Some(m) => m.asInstanceOf[Map[String, Any]].get("partitions") match {
               case Some(repl)  =>
                 val replicaMap = repl.asInstanceOf[Map[String, Seq[Int]]]

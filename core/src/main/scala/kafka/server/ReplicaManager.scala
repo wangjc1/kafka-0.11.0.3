@@ -608,6 +608,7 @@ class ReplicaManager(val config: KafkaConfig,
     val fetchOnlyCommitted: Boolean = ! Request.isValidBrokerId(replicaId)
 
     // read from local logs
+    // 从本地读取消息记录
     val logReadResults = readFromLocalLog(
       replicaId = replicaId,
       fetchOnlyFromLeader = fetchOnlyFromLeader,
@@ -620,6 +621,7 @@ class ReplicaManager(val config: KafkaConfig,
 
     // if the fetch comes from the follower,
     // update its corresponding log end offset
+    // 将从本地读取的消息记录作为响应结果发送给拉取客户端
     if(Request.isValidBrokerId(replicaId))
       updateFollowerLogReadResults(replicaId, logReadResults)
 
@@ -846,6 +848,7 @@ class ReplicaManager(val config: KafkaConfig,
           val partitionLeaderEpoch = partition.getLeaderEpoch
           // If the leader epoch is valid record the epoch of the controller that made the leadership decision.
           // This is useful while updating the isr to maintain the decision maker controller's epoch in the zookeeper path
+          // 没有重新选举过Controller，重新选举后leaderEpoch会增加
           if (partitionLeaderEpoch < stateInfo.leaderEpoch) {
             if(stateInfo.replicas.contains(localBrokerId))
               partitionState.put(partition, stateInfo)

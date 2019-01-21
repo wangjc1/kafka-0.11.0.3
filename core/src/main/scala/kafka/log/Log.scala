@@ -186,6 +186,7 @@ class Log(@volatile var dir: File,
     loadSegments()
 
     /* Calculate the offset of the next message */
+    /* activeSegment.nextOffset下一条消息偏移量，activeSegment.baseOffset日志端基准偏移量，activeSegment.size日字段尺寸*/
     nextOffsetMetadata = new LogOffsetMetadata(activeSegment.nextOffset, activeSegment.baseOffset, activeSegment.size)
 
     leaderEpochCache.clearAndFlushLatest(nextOffsetMetadata.messageOffset)
@@ -393,6 +394,7 @@ class Log(@volatile var dir: File,
     val swapFiles = removeTempFilesAndCollectSwapFiles()
 
     // now do a second pass and load all the log and index files
+    // 加载所有日字段文件
     loadSegmentFiles()
 
     // Finally, complete any interrupted swap operations. To be crash-safe,

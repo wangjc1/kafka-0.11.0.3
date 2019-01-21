@@ -138,6 +138,7 @@ class Replica(val brokerId: Int,
     else
       _logStartOffset
 
+  // 设置副本的最高水位线，只有本地副本可以更新
   def highWatermark_=(newHighWatermark: LogOffsetMetadata) {
     if (isLocal) {
       highWatermarkMetadata = newHighWatermark
@@ -167,6 +168,7 @@ class Replica(val brokerId: Int,
       s"non-local replica $brokerId"))
   }
 
+  //以最新的HW offset读取Log
   def convertHWToLocalOffsetMetadata() = {
     if (isLocal) {
       highWatermarkMetadata = log.get.convertToOffsetMetadata(highWatermarkMetadata.messageOffset)

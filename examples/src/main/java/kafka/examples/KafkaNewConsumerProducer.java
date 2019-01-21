@@ -71,6 +71,8 @@ class Consumer extends ShutdownableThread {
         props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "40000");
         //心跳时间间隔
         props.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, "3000");
+        //从何处开始消费,latest 表示消费最新消息,earliest 表示从头开始消费,none表示抛出异常,默认latest
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         //序列号类
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.IntegerDeserializer");
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");

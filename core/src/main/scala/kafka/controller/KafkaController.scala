@@ -426,7 +426,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     // 让没有主副本的分区下线
     partitionStateMachine.handleStateChanges(partitionsWithoutLeader, OfflinePartition)
     // trigger OnlinePartition state changes for offline or new partitions
-    // 重新选举分区的主副本， “下线状态”的分区会转为“上线状态”
+    // 从其他Broker上的副本中重新选举一个主副本， “下线状态”的分区会转为“上线状态”
     partitionStateMachine.triggerOnlinePartitionStateChange()
     // filter out the replicas that belong to topics that are being deleted
     var allReplicasOnDeadBrokers = controllerContext.replicasOnBrokers(deadBrokersSet)
@@ -531,13 +531,16 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
       updateLeaderEpochAndSendRequest(topicAndPartition, controllerContext.partitionReplicaAssignment(topicAndPartition),
         newAndOldReplicas.toSeq)
       //3. replicas in RAR - OAR -> NewReplica
+      // 设置新加入的副本为“新建”状态
       startNewReplicasForReassignedPartition(topicAndPartition, reassignedPartitionContext, newReplicasNotInOldReplicaList)
       info("Waiting for new replicas %s for partition %s being ".format(reassignedReplicas.mkString(","), topicAndPartition) +
         "reassigned to catch up with the leader")
     } else {
       //4. Wait until all replicas in RAR are in sync with the leader.
+      // 不在新分配副本之列的副本
       val oldReplicas = controllerContext.partitionReplicaAssignment(topicAndPartition).toSet -- reassignedReplicas.toSet
       //5. replicas in RAR -> OnlineReplica
+      // 设置新分配副本“上线”
       reassignedReplicas.foreach { replica =>
         replicaStateMachine.handleStateChanges(Set(new PartitionAndReplica(topicAndPartition.topic, topicAndPartition.partition,
           replica)), OnlineReplica)
@@ -545,6 +548,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
       //6. Set AR to RAR in memory.
       //7. Send LeaderAndIsr request with a potential new leader (if current leader not in RAR) and
       //   a new AR (using RAR) and same isr to every broker in RAR
+      // 加入当前leader不在新分配副本中，则从新副本中选举一个leader
       moveReassignedPartitionLeaderIfRequired(topicAndPartition, reassignedPartitionContext)
       //8. replicas in OAR - RAR -> Offline (force those replicas out of isr)
       //9. replicas in OAR - RAR -> NonExistentReplica (force those replicas to be deleted)
@@ -591,6 +595,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
             watchIsrChangesForReassignedPartition(topic, partition, reassignedPartitionContext)
             controllerContext.partitionsBeingReassigned.put(topicAndPartition, reassignedPartitionContext)
             // mark topic ineligible for deletion for the partitions being reassigned
+            // 在重新分配之前，标记此主题不能被删除
             topicDeletionManager.markTopicIneligibleForDeletion(Set(topic))
             onPartitionReassignment(topicAndPartition, reassignedPartitionContext)
           }
@@ -800,6 +805,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     // request to the current or new leader. This will prevent it from adding the old replicas to the ISR
     val oldAndNewReplicas = controllerContext.partitionReplicaAssignment(topicAndPartition)
     controllerContext.partitionReplicaAssignment.put(topicAndPartition, reassignedReplicas)
+    // 当前leader不在新副本中，则从新副本中选举一个leader
     if(!reassignedPartitionContext.newReplicas.contains(currentLeader)) {
       info("Leader %s for partition %s being reassigned, ".format(currentLeader, topicAndPartition) +
         "is not in the new list of replicas %s. Re-electing leader".format(reassignedReplicas.mkString(",")))
@@ -1046,7 +1052,9 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
               "controller was elected with epoch %d. Aborting state change by this controller".format(controllerEpoch))
           if (leaderAndIsr.isr.contains(replicaId)) {
             // if the replica to be removed from the ISR is also the leader, set the new leader value to -1
+            // 如果宕机上的副本replicaId 正好是个leader，那么只好标记为NoLeader
             val newLeader = if (replicaId == leaderAndIsr.leader) LeaderAndIsr.NoLeader else leaderAndIsr.leader
+            // 去掉宕机副本后的新副本
             var newIsr = leaderAndIsr.isr.filter(b => b != replicaId)
 
             // if the replica to be removed from the ISR is the last surviving member of the ISR and unclean leader election
@@ -1060,11 +1068,13 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
 
             val newLeaderAndIsr = leaderAndIsr.newLeaderAndIsr(newLeader, newIsr)
             // update the new leadership decision in zookeeper or retry
+            // 更新ZK路径 /partitions/[partitionID]/state中data
             val (updateSucceeded, newVersion) = ReplicationUtils.updateLeaderAndIsr(zkUtils, topic, partition,
               newLeaderAndIsr, epoch, leaderAndIsr.zkVersion)
 
             val leaderWithNewVersion = newLeaderAndIsr.withZkVersion(newVersion)
             finalLeaderIsrAndControllerEpoch = Some(LeaderIsrAndControllerEpoch(leaderWithNewVersion, epoch))
+            //更新缓存中 LeaderAndPartition数据
             controllerContext.partitionLeadershipInfo.put(topicAndPartition, finalLeaderIsrAndControllerEpoch.get)
             if (updateSucceeded) {
               info(s"New leader and ISR for partition $topicAndPartition is $leaderWithNewVersion")
@@ -1611,6 +1621,7 @@ class KafkaController(val config: KafkaConfig, zkUtils: ZkUtils, time: Time, met
     }
 
     try {
+      //创建一个/controller瞬时节点，里面的数据是Leader Controller：{"version":1,"brokerid":1,"timestamp":"1547536580158"}
       val zkCheckedEphemeral = new ZKCheckedEphemeral(ZkUtils.ControllerPath,
                                                       electString,
                                                       controllerContext.zkUtils.zkConnection.getZookeeper,

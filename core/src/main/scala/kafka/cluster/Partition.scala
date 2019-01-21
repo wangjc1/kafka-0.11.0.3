@@ -204,6 +204,7 @@ class Partition(val topic: String,
         replica.resetLastCaughtUpTime(curLeaderLogEndOffset, curTimeMs, lastCaughtUpTimeMs)
       }
       // we may need to increment high watermark since ISR could be down to 1
+      // 如果是从备份副本转换为主副本，需要更新HW
       if (isNewLeader) {
         // construct the high watermark metadata for the new leader replica
         leaderReplica.convertHWToLocalOffsetMetadata()
@@ -301,6 +302,7 @@ class Partition(val topic: String,
           if(!inSyncReplicas.contains(replica) &&
              assignedReplicas.map(_.brokerId).contains(replicaId) &&
              replica.logEndOffset.offsetDiff(leaderHW) >= 0) {
+            //新的ISR集合
             val newInSyncReplicas = inSyncReplicas + replica
             info(s"Expanding ISR from ${inSyncReplicas.map(_.brokerId).mkString(",")} " +
               s"to ${newInSyncReplicas.map(_.brokerId).mkString(",")}")
@@ -485,9 +487,10 @@ class Partition(val topic: String,
 
           val info = log.appendAsLeader(records, leaderEpoch = this.leaderEpoch, isFromClient)
           // probably unblock some follower fetch requests since log end offset has been updated
-          // 尝试完成延迟的拉取请求
+          // 追加完消息后，在尝试完成延迟的拉取请求，所以尝试完成拉取时还会再调用replicaManager.readFromLocalLog()方法读取一次消息
           replicaManager.tryCompleteDelayedFetch(TopicPartitionOperationKey(this.topic, this.partitionId))
           // we may need to increment high watermark since ISR could be down to 1
+          // 从assignedReplicas副本中读取一个最小的HW，更新成最新的highWatermark
           (info, maybeIncrementLeaderHW(leaderReplica))
 
         case None =>
